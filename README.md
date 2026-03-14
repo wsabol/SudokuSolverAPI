@@ -95,6 +95,13 @@ Deploy worker:
 npm run deploy
 ```
 
+## GitHub Actions CI/CD
+
+This repository includes a workflow at `.github/workflows/ci-cd.yml`.
+
+- On pull requests: runs unit tests with coverage via `npm run test:coverage`.
+- Pull requests fail if overall coverage drops below 80% for lines, functions, branches, or statements.
+
 ## External Resources
 
 - CLI Version of this API: [wsabol/SudokuSolver](https://github.com/wsabol/SudokuSolver)

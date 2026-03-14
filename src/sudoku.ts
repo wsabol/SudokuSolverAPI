@@ -45,7 +45,7 @@ export function parseBoardString(board: string): Board {
 }
 
 export class Sudoku {
-    board: Board;
+    private board: Board;
     private possiblesGrid: number[][][];
     private numGivens: number;
 

@@ -46,4 +46,95 @@ describe("Worker API", () => {
         expect(payload.valid).toBe(false);
         expect(payload.reasons.some((reason) => reason.type === "duplicate_in_row")).toBe(true);
     });
+
+    it("returns 405 for non-GET requests", async () => {
+        const req = new Request(`https://example.com/solve?board=${BOARD}`, {
+            method: "POST",
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(405);
+    });
+
+    it("returns 404 for unknown endpoint", async () => {
+        const req = new Request("https://example.com/unknown", {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(404);
+    });
+
+    it("returns 400 for missing board on solve", async () => {
+        const req = new Request("https://example.com/solve", {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(400);
+    });
+
+    it("returns 400 for invalid board characters on solve", async () => {
+        const invalidCharsBoard =
+            "00001008030260700007000000308007050000400060000305001020000005000070510806004000x";
+        const req = new Request(`https://example.com/solve?board=${invalidCharsBoard}`, {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(400);
+        const payload = (await res.json()) as { error: string; details?: string };
+        expect(payload.error).toBe("Invalid board format");
+        expect(payload.details).toBeDefined();
+    });
+
+    it("returns invalid length reason from validate endpoint", async () => {
+        const req = new Request("https://example.com/validate?board=123", {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(200);
+        const payload = (await res.json()) as { valid: boolean; reasons: Array<{ type: string }> };
+        expect(payload.valid).toBe(false);
+        expect(payload.reasons.some((reason) => reason.type === "invalid_board_length")).toBe(true);
+    });
+
+    it("returns 400 for short board on solve", async () => {
+        const req = new Request("https://example.com/solve?board=123", {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(400);
+    });
+
+    it("returns 400 for invalid board characters on hint", async () => {
+        const invalidCharsBoard =
+            "00001008030260700007000000308007050000400060000305001020000005000070510806004000x";
+        const req = new Request(`https://example.com/hint?board=${invalidCharsBoard}`, {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(400);
+        const payload = (await res.json()) as { error: string; details?: string };
+        expect(payload.error).toBe("Invalid board format");
+        expect(payload.details).toBeDefined();
+    });
+
+    it("returns 400 for missing board on validate", async () => {
+        const req = new Request("https://example.com/validate", {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(400);
+    });
+
+    it("returns invalid characters reason from validate endpoint", async () => {
+        const invalidCharsBoard =
+            "00001008030260700007000000308007050000400060000305001020000005000070510806004000x";
+        const req = new Request(`https://example.com/validate?board=${invalidCharsBoard}`, {
+            headers: AUTH_HEADER,
+        });
+        const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
+        expect(res.status).toBe(200);
+        const payload = (await res.json()) as { valid: boolean; reasons: Array<{ type: string }> };
+        expect(payload.valid).toBe(false);
+        expect(payload.reasons.some((reason) => reason.type === "invalid_board_characters")).toBe(true);
+    });
 });

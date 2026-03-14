@@ -6,7 +6,8 @@
         "strict": true,
         "types": [
             "@cloudflare/workers-types",
-            "vitest/globals"
+            "vitest/globals",
+            "node"
         ],
         "skipLibCheck": true,
         "noEmit": true

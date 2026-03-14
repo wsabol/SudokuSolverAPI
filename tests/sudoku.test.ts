@@ -54,4 +54,19 @@ describe("Validation", () => {
         expect(result.valid).toBe(false);
         expect(result.reasons.some((r) => r.type === "duplicate_in_row")).toBe(true);
     });
+
+    it("flags invalid matrix length", () => {
+        const invalidShape = [[1, 2, 3]] as unknown as number[][];
+        const result = validateBoard(invalidShape);
+        expect(result.valid).toBe(false);
+        expect(result.reasons[0]?.type).toBe("invalid_board_length");
+    });
+
+    it("flags invalid cell values", () => {
+        const board = parseBoardString(BOARD);
+        board[0][0] = 12;
+        const result = validateBoard(board);
+        expect(result.valid).toBe(false);
+        expect(result.reasons.some((r) => r.type === "invalid_value")).toBe(true);
+    });
 });
