@@ -1,16 +1,24 @@
 import { describe, expect, it } from "vitest";
 import worker from "../src/index";
+import type { ApiResponse } from "../src/response";
 
 const BOARD =
     "000010080302607000070000003080070500004000600003050010200000050000705108060040000";
 
 const AUTH_HEADER = { Authorization: "Bearer test-token" };
 
+async function json<T extends object>(res: Response): Promise<ApiResponse<T>> {
+    return res.json() as Promise<ApiResponse<T>>;
+}
+
 describe("Worker API", () => {
     it("returns 401 without token", async () => {
         const req = new Request(`https://example.com/solve?board=${BOARD}`);
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(401);
+        const payload = await json(res);
+        expect(payload.code).toBe(401);
+        expect(payload.message).toBe("Unauthorized");
     });
 
     it("solves board", async () => {
@@ -19,9 +27,10 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(200);
-        const payload = (await res.json()) as { status: string; board: number[][] };
-        expect(payload.status).toBe("Unique Solution");
-        expect(payload.board.flat().includes(0)).toBe(false);
+        const payload = await json<{ board: number[][] }>(res);
+        expect(payload.code).toBe(200);
+        expect(payload.message).toBe("Unique Solution");
+        expect(payload.data.board.flat().includes(0)).toBe(false);
     });
 
     it("returns hint", async () => {
@@ -30,8 +39,10 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(200);
-        const payload = (await res.json()) as { move: { row: number; col: number; value: number } | null };
-        expect(payload.move).not.toBeNull();
+        const payload = await json<{ status: string; move: { row: number; col: number; value: number } | null; board: number[][] }>(res);
+        expect(payload.code).toBe(200);
+        expect(payload.data.move).not.toBeNull();
+        expect(payload.message).toMatch(/^place \d+ in row \d+ column \d+$/);
     });
 
     it("returns validation reasons for invalid board", async () => {
@@ -42,9 +53,10 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(200);
-        const payload = (await res.json()) as { valid: boolean; reasons: Array<{ type: string }> };
-        expect(payload.valid).toBe(false);
-        expect(payload.reasons.some((reason) => reason.type === "duplicate_in_row")).toBe(true);
+        const payload = await json<{ valid: boolean; reasons: Array<{ type: string }> }>(res);
+        expect(payload.code).toBe(200);
+        expect(payload.data.valid).toBe(false);
+        expect(payload.data.reasons.some((r) => r.type === "duplicate_in_row")).toBe(true);
     });
 
     it("returns 405 for non-GET requests", async () => {
@@ -54,6 +66,9 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(405);
+        const payload = await json(res);
+        expect(payload.code).toBe(405);
+        expect(payload.message).toBe("Method not allowed");
     });
 
     it("returns 404 for unknown endpoint", async () => {
@@ -62,6 +77,9 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(404);
+        const payload = await json(res);
+        expect(payload.code).toBe(404);
+        expect(payload.message).toBe("Not found");
     });
 
     it("returns 400 for missing board on solve", async () => {
@@ -70,6 +88,9 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(400);
+        const payload = await json(res);
+        expect(payload.code).toBe(400);
+        expect(payload.message).toBe("Missing board parameter");
     });
 
     it("returns 400 for invalid board characters on solve", async () => {
@@ -80,9 +101,9 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(400);
-        const payload = (await res.json()) as { error: string; details?: string };
-        expect(payload.error).toBe("Invalid board format");
-        expect(payload.details).toBeDefined();
+        const payload = await json(res);
+        expect(payload.code).toBe(400);
+        expect(payload.message).toContain("Invalid board format");
     });
 
     it("returns invalid length reason from validate endpoint", async () => {
@@ -91,9 +112,10 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(200);
-        const payload = (await res.json()) as { valid: boolean; reasons: Array<{ type: string }> };
-        expect(payload.valid).toBe(false);
-        expect(payload.reasons.some((reason) => reason.type === "invalid_board_length")).toBe(true);
+        const payload = await json<{ valid: boolean; reasons: Array<{ type: string }> }>(res);
+        expect(payload.code).toBe(200);
+        expect(payload.data.valid).toBe(false);
+        expect(payload.data.reasons.some((r) => r.type === "invalid_board_length")).toBe(true);
     });
 
     it("returns 400 for short board on solve", async () => {
@@ -102,6 +124,8 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(400);
+        const payload = await json(res);
+        expect(payload.code).toBe(400);
     });
 
     it("returns 400 for invalid board characters on hint", async () => {
@@ -112,9 +136,9 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(400);
-        const payload = (await res.json()) as { error: string; details?: string };
-        expect(payload.error).toBe("Invalid board format");
-        expect(payload.details).toBeDefined();
+        const payload = await json(res);
+        expect(payload.code).toBe(400);
+        expect(payload.message).toContain("Invalid board format");
     });
 
     it("returns 400 for missing board on validate", async () => {
@@ -123,6 +147,9 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(400);
+        const payload = await json(res);
+        expect(payload.code).toBe(400);
+        expect(payload.message).toBe("Missing board parameter");
     });
 
     it("returns move:null and complete status for a solved board on hint", async () => {
@@ -133,9 +160,11 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(200);
-        const payload = (await res.json()) as { status: string; move: null };
-        expect(payload.move).toBeNull();
-        expect(payload.status).toBe("Complete");
+        const payload = await json<{ status: string; move: null; board: number[][] }>(res);
+        expect(payload.code).toBe(200);
+        expect(payload.data.move).toBeNull();
+        expect(payload.data.status).toBe("Complete");
+        expect(payload.message).toBe("No more moves");
     });
 
     it("returns 400 for unsolvable board on hint", async () => {
@@ -146,6 +175,8 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(400);
+        const payload = await json(res);
+        expect(payload.code).toBe(400);
     });
 
     it("returns invalid characters reason from validate endpoint", async () => {
@@ -156,8 +187,9 @@ describe("Worker API", () => {
         });
         const res = await worker.fetch(req, { BEARER_TOKEN: "test-token" });
         expect(res.status).toBe(200);
-        const payload = (await res.json()) as { valid: boolean; reasons: Array<{ type: string }> };
-        expect(payload.valid).toBe(false);
-        expect(payload.reasons.some((reason) => reason.type === "invalid_board_characters")).toBe(true);
+        const payload = await json<{ valid: boolean; reasons: Array<{ type: string }> }>(res);
+        expect(payload.code).toBe(200);
+        expect(payload.data.valid).toBe(false);
+        expect(payload.data.reasons.some((r) => r.type === "invalid_board_characters")).toBe(true);
     });
 });

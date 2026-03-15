@@ -12,18 +12,24 @@ Supported endpoints (GET only):
 
 Authentication:
 - Require `Authorization: Bearer <token>` for all endpoints.
-- Return `401` JSON `{ "error": "Unauthorized" }` on auth failure.
+- Return `401` with envelope `{ code: 401, data: {}, message: "Unauthorized" }` on auth failure.
 
 Board input contract:
 - Use query param `board`.
 - Accept 81 characters only.
 - Allowed characters: `0-9` and `.`.
 
+Response envelope (all responses):
+```json
+{ "code": <http_status>, "data": <object>, "message": <string> }
+```
+
 Response contract:
-- `/solve`: `{ status: string, board: number[][] }`
-- `/hint`: `{ status: string, move: {row,col,value} | null, message: string, board: number[][] }`
-- `/validate`: `{ valid: boolean, message: string, reasons: ValidationReason[] }`
+- `/solve`: `{ code: 200, data: { board: number[][] }, message: <solve_status_string> }`
+- `/hint`: `{ code: 200, data: { status: string, move: {row,col,value} | null, board: number[][] }, message: <hint_text> }`
+- `/validate`: `{ code: 200, data: { valid: boolean, reasons: ValidationReason[] }, message: <validation_summary> }`
 
 Error contract:
-- Missing board -> `400` with clear JSON error.
-- Invalid board format/length/chars -> `400` or `valid:false` (for `/validate`) with reasons.
+- All errors: `{ code: <status>, data: {}, message: <error_description> }`
+- Missing board -> `400`.
+- Invalid board format/length/chars -> `400` or `code:200, data.valid:false` (for `/validate`) with reasons in `data.reasons`.

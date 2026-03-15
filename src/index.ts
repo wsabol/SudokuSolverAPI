@@ -1,9 +1,6 @@
 import { authorize, unauthorizedResponse, type Env } from "./auth";
 import { solveRequest, hintRequest, validateRequest } from "./routes";
-
-function jsonNotFound(): Response {
-    return Response.json({ error: "Not found" }, { status: 404 });
-}
+import { apiResponse } from "./response";
 
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
@@ -12,7 +9,7 @@ export default {
         }
 
         if (request.method !== "GET") {
-            return Response.json({ error: "Method not allowed" }, { status: 405 });
+            return apiResponse(405, {}, "Method not allowed");
         }
 
         const url = new URL(request.url);
@@ -29,6 +26,6 @@ export default {
             return validateRequest(request);
         }
 
-        return jsonNotFound();
+        return apiResponse(404, {}, "Not found");
     },
 } satisfies ExportedHandler<Env>;

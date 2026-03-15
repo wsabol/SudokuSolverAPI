@@ -1,3 +1,5 @@
+import { apiResponse } from "./response";
+
 export interface Env {
     BEARER_TOKEN: string;
 }
@@ -44,5 +46,5 @@ export function authorize(request: Request, env: Env): boolean {
 }
 
 export function unauthorizedResponse(): Response {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return apiResponse(401, {}, "Unauthorized");
 }

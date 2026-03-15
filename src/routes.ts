@@ -1,14 +1,9 @@
 import { Sudoku, parseBoardString, type Board } from "./sudoku";
 import { validateBoard } from "./validate";
+import { apiResponse } from "./response";
 
-function badRequest(error: string, details?: string): Response {
-    return Response.json(
-        {
-            error,
-            ...(details ? { details } : {}),
-        },
-        { status: 400 }
-    );
+function badRequest(message: string): Response {
+    return apiResponse(400, {}, message);
 }
 
 function parseBoardFromQuery(request: Request): { board?: string; error?: Response } {
@@ -30,7 +25,7 @@ function parseBoard(request: Request): { parsed?: Board; error?: Response } {
     try {
         return { parsed: parseBoardString(board) };
     } catch (err) {
-        return { error: badRequest("Invalid board format", (err as Error).message) };
+        return { error: badRequest(`Invalid board format: ${(err as Error).message}`) };
     }
 }
 
@@ -42,10 +37,7 @@ function solveRequest(request: Request) {
 
     const sudoku = new Sudoku(parsed);
     const status = sudoku.solve();
-    return Response.json({
-        status,
-        board: sudoku.toJSONBoard(),
-    });
+    return apiResponse(200, { board: sudoku.toJSONBoard() }, status);
 }
 
 function hintRequest(request: Request) {
@@ -68,12 +60,15 @@ function hintRequest(request: Request) {
         sudoku.setSquareValue(move.row, move.col, move.value);
     }
 
-    return Response.json({
-        status: sudoku.isComplete() ? "Complete" : "In progress",
-        move,
-        message,
-        board: sudoku.toJSONBoard(),
-    });
+    return apiResponse(
+        200,
+        {
+            status: sudoku.isComplete() ? "Complete" : "In progress",
+            move,
+            board: sudoku.toJSONBoard(),
+        },
+        message
+    );
 }
 
 function validateRequest(request: Request) {
@@ -82,31 +77,37 @@ function validateRequest(request: Request) {
         return badRequest("Missing board parameter");
     }
     if (board.length !== 81) {
-        return Response.json({
-            valid: false,
-            message: "Board must be 81 characters",
-            reasons: [
-                {
-                    type: "invalid_board_length",
-                    detail: `Board must be 81 characters, got ${board.length}`,
-                },
-            ],
-        });
+        return apiResponse(
+            200,
+            {
+                valid: false,
+                reasons: [
+                    {
+                        type: "invalid_board_length",
+                        detail: `Board must be 81 characters, got ${board.length}`,
+                    },
+                ],
+            },
+            "Board must be 81 characters"
+        );
     }
     if (!/^[0-9.]{81}$/.test(board)) {
-        return Response.json({
-            valid: false,
-            message: "Board contains invalid characters",
-            reasons: [
-                {
-                    type: "invalid_board_characters",
-                    detail: "Only digits 0-9 and '.' are allowed",
-                },
-            ],
-        });
+        return apiResponse(
+            200,
+            {
+                valid: false,
+                reasons: [
+                    {
+                        type: "invalid_board_characters",
+                        detail: "Only digits 0-9 and '.' are allowed",
+                    },
+                ],
+            },
+            "Board contains invalid characters"
+        );
     }
-    const result = validateBoard(parseBoardString(board));
-    return Response.json(result);
+    const { valid, message, reasons } = validateBoard(parseBoardString(board));
+    return apiResponse(200, { valid, reasons }, message);
 }
 
 export {
