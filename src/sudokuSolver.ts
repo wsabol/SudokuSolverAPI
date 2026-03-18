@@ -52,7 +52,7 @@ export default class SudokuSolver {
     }
 
     isComplete(): boolean {
-        return this.isValid() && this.board.every((row) => row.every((v) => v !== 0));
+        return this.board.every((row) => row.every((v) => v !== 0));
     }
 
     countEmptyCells(): number {
@@ -135,7 +135,6 @@ export default class SudokuSolver {
         }
 
         if (reasons.length === 0) {
-            const sudoku = new SudokuSolver(this.board);
             for (let row = 0; row < 9; row += 1) {
                 for (let col = 0; col < 9; col += 1) {
                     if (this.board[row][col] === 0 && this.possiblesGrid[row][col].length === 0) {
@@ -206,10 +205,7 @@ export default class SudokuSolver {
 
         let boardChanged = true;
         while (!this.isComplete() && boardChanged) {
-            const before = JSON.stringify(this.board);
-            this.uniPossiblesSolve();
-            const after = JSON.stringify(this.board);
-            boardChanged = before !== after;
+            boardChanged = this.uniPossiblesSolve();
         }
 
         if (this.isComplete()) {
@@ -365,30 +361,37 @@ export default class SudokuSolver {
         }
     }
 
-    private uniPossiblesSolve(): void {
-        for (let row = 0; row < 9; row += 1) {
+    private uniPossiblesSolve(): boolean {
+        let movesMade = 0;
+
+        for (let row = 0; row < 9; row++) {
             let move = this.findHiddenSingleInRow(row);
             while (move) {
+                movesMade++;
                 this.setSquareValue(move.row, move.col, move.value);
                 this.simpleSolve();
                 move = this.findHiddenSingleInRow(row);
             }
         }
-        for (let col = 0; col < 9; col += 1) {
+        for (let col = 0; col < 9; col++) {
             let move = this.findHiddenSingleInCol(col);
             while (move) {
+                movesMade++;
                 this.setSquareValue(move.row, move.col, move.value);
                 this.simpleSolve();
                 move = this.findHiddenSingleInCol(col);
             }
         }
-        for (let box = 0; box < 9; box += 1) {
+        for (let box = 0; box < 9; box++) {
             let move = this.findHiddenSingleInBox(box);
             while (move) {
+                movesMade++;
                 this.setSquareValue(move.row, move.col, move.value);
                 this.simpleSolve();
                 move = this.findHiddenSingleInBox(box);
             }
         }
+
+        return movesMade > 0;
     }
 }
