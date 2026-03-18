@@ -1,0 +1,17 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": false,
+        "outDir": "./dist",
+        "declaration": true,
+        "declarationMap": true,
+        "types": [
+            "node"
+        ]
+    },
+    "include": [
+        "src/index.ts",
+        "src/sudoku.ts",
+        "src/validate.ts"
+    ]
+}

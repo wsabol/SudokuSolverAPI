@@ -1,0 +1,44 @@
+---
+description: Public Node module contracts and input/output rules
+alwaysApply: true
+---
+
+# Module Contracts
+
+Public exports from `src/index.ts`:
+- `solve(boardInput: string | Board): SolveResult`
+- `hint(boardInput: string | Board): HintResult`
+- `validate(boardInput: string | Board): ValidationResult`
+- Types: `Board`, `Move`, `ValidationReason`, `ValidationResult`
+
+Board input contract:
+- Board string must be exactly 81 characters.
+- Allowed board string characters: `0-9` and `.`.
+- `Board` matrix input must be `9x9` with integer cell values in `0..9`.
+
+Output contract:
+- `solve()` returns:
+  - `status: string`
+  - `board: number[][]`
+- `hint()` returns:
+  - `status: "Complete" | "In progress" | "Invalid"`
+  - `move: { row, col, value } | null`
+  - `board: number[][]`
+  - `message: string`
+- `validate()` returns:
+  - `valid: boolean`
+  - `message: string`
+  - `reasons: ValidationReason[]`
+
+Validation reason taxonomy:
+- `duplicate_in_row`
+- `duplicate_in_column`
+- `duplicate_in_box`
+- `invalid_value`
+- `invalid_board_length`
+- `invalid_board_characters`
+- `empty_cell_no_candidates`
+
+Stability rules:
+- Treat exported function signatures and reason type names as semver-sensitive.
+- Prefer adding new fields over changing/removing existing fields.

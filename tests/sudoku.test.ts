@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { Sudoku, parseBoardString } from "../src/sudoku";
+import { SudokuSolver, parseBoardString } from "../src/sudokuSolver";
 import { validateBoard } from "../src/validate";
 
 const BOARD =
@@ -24,15 +24,15 @@ describe("Sudoku solver", () => {
     });
 
     it("solves known puzzle", () => {
-        const sudoku = new Sudoku(BOARD);
+        const sudoku = new SudokuSolver(BOARD);
         const status = sudoku.solve();
         expect(status).toBe("Unique Solution");
-        const flat = sudoku.toJSONBoard().flat();
+        const flat = sudoku.toArray().flat();
         expect(flat.includes(0)).toBe(false);
     });
 
     it("returns next move for hint", () => {
-        const sudoku = new Sudoku(BOARD);
+        const sudoku = new SudokuSolver(BOARD);
         const move = sudoku.getNextMove();
         expect(move).not.toBeNull();
         expect(move?.row).toBeGreaterThanOrEqual(0);
@@ -41,7 +41,7 @@ describe("Sudoku solver", () => {
     });
 
     it.each(solveCases)('matches expected status for "$title"', ({ board, result }) => {
-        const sudoku = new Sudoku(board);
+        const sudoku = new SudokuSolver(board);
         expect(sudoku.solve()).toBe(result);
     });
 });

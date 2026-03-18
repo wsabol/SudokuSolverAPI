@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Validation Guidelines
 
-`/validate` must provide both:
+`validate(boardInput)` must provide both:
 - simple summary: `valid`, `message`
 - structured diagnostics: `reasons[]`
 
@@ -21,8 +21,11 @@ Preferred reason types:
 Guidelines:
 - `message` should summarize the first actionable reason.
 - Include coordinates (`row`, `col`, `box`) and `value` when relevant.
-- Keep reason names stable for API consumers.
+- Keep reason names stable for module consumers.
 - Avoid duplicate reason objects for the same issue.
+- For string input:
+  - Non-81 chars -> `invalid_board_length`
+  - Invalid chars (not `0-9` or `.`) -> `invalid_board_characters`
 
 When adding new validation behavior:
 - Add a new reason type only if existing types cannot represent it.

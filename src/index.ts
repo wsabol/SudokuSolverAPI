@@ -1,31 +1,133 @@
-import { authorize, unauthorizedResponse, type Env } from "./auth";
-import { solveRequest, hintRequest, validateRequest } from "./routes";
-import { apiResponse } from "./response";
+import { SudokuSolver, type Board, type Move } from "./sudokuSolver";
+import { invalidBoardLength, invalidBoardCharacters, type ValidationReason, type ValidationResult } from "./validate";
 
-export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
-        if (!authorize(request, env)) {
-            return unauthorizedResponse();
+interface SolveResult {
+    isValid: boolean;
+    board: Board;
+}
+
+interface DescribeResult {
+    isValid: boolean;
+    isComplete: boolean;
+    message: string,
+    difficulty: string,
+    solutions: number,
+}
+
+type MoveStatus = "Complete" | "In progress" | "Invalid";
+
+interface MoveResult {
+    status: MoveStatus;
+    move: Move | null;
+    message: string;
+}
+
+function solve(boardInput: string | Board): SolveResult {
+    const sudoku = new SudokuSolver(boardInput);
+    const isValid = sudoku.solve();
+    return {
+        isValid: isValid,
+        board: sudoku.toArray(),
+    };
+}
+
+function nextMove(boardInput: string | Board): MoveResult {
+    const sudoku = new SudokuSolver(boardInput);
+
+    const validation = sudoku.validate();
+    if (!validation.isValid) {
+        return {
+            status: "Invalid",
+            move: null,
+            message: `Invalid Puzzle: ${validation.message}`,
+        };
+    }
+
+    const move = sudoku.getNextMove();
+    const message = move
+        ? `Place ${move.value} in row ${move.row + 1} column ${move.col + 1}`
+        : "No more moves";
+
+    if (move) {
+        sudoku.setSquareValue(move.row, move.col, move.value);
+    }
+
+    return {
+        status: sudoku.isComplete() ? "Complete" : "In progress",
+        move,
+        message,
+    };
+}
+
+function validate(boardInput: string | Board): ValidationResult {
+    if (typeof boardInput === "string") {
+        if (boardInput.length !== 81) {
+            return invalidBoardLength(boardInput.length);
         }
-
-        if (request.method !== "GET") {
-            return apiResponse(405, {}, "Method not allowed");
+        if (!/^[0-9.]{81}$/.test(boardInput)) {
+            return invalidBoardCharacters();
         }
+    }
 
-        const url = new URL(request.url);
+    const test = new SudokuSolver(boardInput);
+    return test.validate();
+}
 
-        if (url.pathname === "/solve") {
-            return solveRequest(request);
+function describeBoard(boardInput: string | Board): DescribeResult {
+    const sudoku = new SudokuSolver(boardInput);
+    const initValidation = sudoku.validate();
+
+    if (!initValidation.isValid) {
+        return {
+            isValid: false,
+            isComplete: false,
+            message: initValidation.message,
+            difficulty: '',
+            solutions: 0,
         }
+    }
 
-        if (url.pathname === "/hint") {
-            return hintRequest(request);
+    let result = {
+        isValid: true,
+        isComplete: sudoku.isComplete(),
+        message: '',
+        difficulty: sudoku.difficulty(),
+        solutions: 0,
+    } as DescribeResult;
+
+    if (result.isComplete) {
+        result.solutions = 1;
+        result.message = 'Solvable with a single solution';
+    } else {
+        sudoku.solve();
+        if (sudoku.isComplete()) {
+            result.solutions = 1;
+            result.message = 'Unique Solution';
+        } else {
+            result.message = 'Invalid Puzzle (\"no unique solution\")';
         }
+    }
 
-        if (url.pathname === "/validate") {
-            return validateRequest(request);
-        }
+    return result;
+}
 
-        return apiResponse(404, {}, "Not found");
-    },
-} satisfies ExportedHandler<Env>;
+const Sudoku = {
+    solve: solve,
+    nextMove: nextMove,
+    validate: validate,
+    describe: describeBoard,
+};
+
+// main exports for the module
+export type {
+    Board,
+    Move,
+    ValidationReason,
+    ValidationResult,
+    SolveResult,
+    MoveResult,
+    MoveStatus,
+    DescribeResult
+};
+
+export default Sudoku;

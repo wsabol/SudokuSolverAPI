@@ -5,21 +5,24 @@ alwaysApply: true
 
 # Project Architecture
 
-This project is a Cloudflare Worker REST API that validates and solves sudoku puzzles
+This project is a TypeScript Node module that validates and solves sudoku puzzles.
 
 Authoritative implementation layout:
-- `src/index.ts`: HTTP routing only — method/path dispatch, no business logic
-- `src/auth.ts`: bearer token auth only — `authorize()` and `unauthorizedResponse()`
-- `src/response.ts`: response envelope only — `apiResponse<T>()` and `ApiResponse<T>` type
-- `src/routes.ts`: request parsing and response shaping for all three endpoints
-- `src/sudoku.ts`: solver logic only (no HTTP concerns)
-- `src/validate.ts`: validation analysis and reasons only
-- `tests/*.test.ts`: unit/integration coverage
+- `src/index.ts`: public module API only (`solve`, `hint`, `validate`) and exported types.
+- `src/sudoku.ts`: core board parsing, solving, move generation, and puzzle status logic.
+- `src/validate.ts`: board diagnostics and stable `ValidationReason` taxonomy.
+- `tests/sudoku.test.ts`: solver/validator internals and fixture-driven status checks.
+- `tests/module.test.ts`: module-level API behavior checks.
+- `tests/test-cases.json`: authoritative fixture list for expected solve statuses.
 
 Rules:
-- Keep routing concerns out of solver/validation modules.
-- Keep solver internals out of `index.ts` handlers.
-- All responses must use `apiResponse()` from `src/response.ts` — never call `Response.json()` directly in route or auth code.
+- Keep `src/index.ts` thin: orchestrate input parsing and result shaping only.
+- Keep solver internals in `src/sudoku.ts`; avoid duplicating solve logic in API wrappers.
+- Keep validation internals in `src/validate.ts`; preserve stable reason type names.
 - Prefer pure functions and deterministic outputs.
 - Keep TypeScript strict and avoid `any`.
-- Preserve Cloudflare Worker compatibility (no Node-only runtime APIs in `src/*`).
+
+Critical module contracts:
+- `solve(boardInput)` returns `{ status, board }`; never throws for valid board shape/value domains.
+- `hint(boardInput)` returns `{ status, move, board, message }` where status is `"Complete" | "In progress" | "Invalid"`.
+- `validate(boardInput)` returns `{ valid, message, reasons }` and includes `invalid_board_length` / `invalid_board_characters` for invalid board strings.

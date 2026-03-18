@@ -1,13 +1,19 @@
 {
-    "name": "sudokusolverapi",
+    "name": "sudoku-solver",
     "version": "1.0.0",
-    "description": "",
-    "main": "index.js",
+    "description": "TypeScript Sudoku solver module with solve, hint, and validate APIs.",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
     "scripts": {
+        "build": "tsc -p tsconfig.build.json",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
-        "dev": "wrangler dev",
-        "deploy": "wrangler deploy",
         "typecheck": "tsc --noEmit",
         "test:watch": "vitest"
     },
@@ -16,11 +22,9 @@
     "license": "ISC",
     "type": "module",
     "devDependencies": {
-        "@cloudflare/workers-types": "^4.20260313.1",
         "@types/node": "^25.5.0",
         "@vitest/coverage-v8": "^4.1.0",
         "typescript": "^5.9.3",
-        "vitest": "^4.1.0",
-        "wrangler": "^4.73.0"
+        "vitest": "^4.1.0"
     }
 }
