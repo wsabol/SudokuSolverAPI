@@ -12,13 +12,13 @@ export interface Move {
     algorithm: Algorithm;
 }
 
-const ALGORITHMS: Algorithm[] = ["Naked Singles", "Hidden Singles"];
-
 export type DifficultyLevel = "Easy" | "Medium" | "Hard" | "Diabolical" | "Impossible";
 
 const COMPLETE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 export default class SudokuSolver {
+    static readonly ALGORITHMS: Algorithm[] = ["Naked Singles", "Hidden Singles"];
+
     private board: Board;
     private possiblesGrid: number[][][];
 
@@ -184,13 +184,7 @@ export default class SudokuSolver {
         if (this.isComplete() || !this.isValid()) {
             return null;
         }
-
-        for (const algorithm of ALGORITHMS) {
-            const move = this.findNextPlacement(algorithm);
-            if (move) return move;
-        }
-
-        return null;
+        return this.findBestMove();
     }
 
     solve(): boolean {
@@ -198,21 +192,13 @@ export default class SudokuSolver {
             return false;
         }
 
-        this.simpleSolve();
-        if (this.isComplete()) {
-            return true;
+        let move = this.findBestMove();
+        while (move) {
+            this.setSquareValue(move.row, move.col, move.value);
+            move = this.findBestMove();
         }
 
-        let boardChanged = true;
-        while (!this.isComplete() && boardChanged) {
-            boardChanged = this.uniPossiblesSolve();
-        }
-
-        if (this.isComplete()) {
-            return true;
-        }
-
-        return false;
+        return this.isComplete();
     }
 
     private boxIndex(row: number, col: number): number {
@@ -344,6 +330,14 @@ export default class SudokuSolver {
         return null;
     }
 
+    private findBestMove(): Move | null {
+        for (const algorithm of SudokuSolver.ALGORITHMS) {
+            const move = this.findNextPlacement(algorithm);
+            if (move) return move;
+        }
+        return null;
+    }
+
     private findNextPlacement(algorithm: Algorithm): Move | null {
         switch (algorithm) {
             case "Naked Singles":
@@ -351,47 +345,5 @@ export default class SudokuSolver {
             case "Hidden Singles":
                 return this.findHiddenSingle();
         }
-    }
-
-    private simpleSolve(): void {
-        let move = this.findNakedSingle();
-        while (move) {
-            this.setSquareValue(move.row, move.col, move.value);
-            move = this.findNakedSingle();
-        }
-    }
-
-    private uniPossiblesSolve(): boolean {
-        let movesMade = 0;
-
-        for (let row = 0; row < 9; row++) {
-            let move = this.findHiddenSingleInRow(row);
-            while (move) {
-                movesMade++;
-                this.setSquareValue(move.row, move.col, move.value);
-                this.simpleSolve();
-                move = this.findHiddenSingleInRow(row);
-            }
-        }
-        for (let col = 0; col < 9; col++) {
-            let move = this.findHiddenSingleInCol(col);
-            while (move) {
-                movesMade++;
-                this.setSquareValue(move.row, move.col, move.value);
-                this.simpleSolve();
-                move = this.findHiddenSingleInCol(col);
-            }
-        }
-        for (let box = 0; box < 9; box++) {
-            let move = this.findHiddenSingleInBox(box);
-            while (move) {
-                movesMade++;
-                this.setSquareValue(move.row, move.col, move.value);
-                this.simpleSolve();
-                move = this.findHiddenSingleInBox(box);
-            }
-        }
-
-        return movesMade > 0;
     }
 }
