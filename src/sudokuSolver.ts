@@ -1,5 +1,5 @@
-import { cloneBoard, assertBoardShape, parseBoardString, duplicateValues } from "./utils";
-import { ValidationReason, ValidationResult, pushUniqueReason } from "./validate";
+import { cloneBoard, assertBoardShape, parseBoardString, duplicateValues } from "./utils.js";
+import { ValidationReason, ValidationResult, pushUniqueReason } from "./validate.js";
 
 export type Board = number[][];
 

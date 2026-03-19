@@ -1,5 +1,5 @@
-import SudokuSolver, { type Algorithm, type Board, type Move, type PlacementMove, type EliminationMove } from "./sudokuSolver";
-import { invalidBoardLength, invalidBoardCharacters, type ValidationReason, type ValidationResult } from "./validate";
+import SudokuSolver, { type Algorithm, type Board, type Move, type PlacementMove, type EliminationMove } from "./sudokuSolver.js";
+import { invalidBoardLength, invalidBoardCharacters, type ValidationReason, type ValidationResult } from "./validate.js";
 
 interface SolveResult {
     isValid: boolean;

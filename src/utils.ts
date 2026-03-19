@@ -1,4 +1,4 @@
-import { type Board } from "./sudokuSolver";
+import { type Board } from "./sudokuSolver.js";
 
 export function cloneBoard(board: Board): Board {
     return board.map((row) => [...row]);
