@@ -8,7 +8,7 @@ alwaysApply: true
 Public exports from `src/index.ts`:
 - `default Sudoku` object with: `solve`, `nextMove`, `validate`, `describe`
 - Named: `SudokuSolver` class
-- Types: `Board`, `Move`, `ValidationReason`, `ValidationResult`, `SolveResult`, `MoveResult`, `MoveStatus`, `DescribeResult`
+- Types: `Board`, `Move`, `PlacementMove`, `EliminationMove`, `ValidationReason`, `ValidationResult`, `SolveResult`, `MoveResult`, `MoveStatus`, `DescribeResult`
 
 Board input contract:
 - Board string must be exactly 81 characters.
@@ -21,7 +21,7 @@ Output contract:
  - `board: number[][]`
 - `nextMove()` returns `MoveResult`:
  - `status: "Complete" | "In progress" | "Invalid"`
- - `move: { row, col, value } | null`
+ - `move: PlacementMove | EliminationMove | null`
  - `message: string`
 - `validate()` returns `ValidationResult`:
  - `isValid: boolean`
@@ -33,6 +33,13 @@ Output contract:
  - `message: string`
  - `difficulty: "Easy" | "Medium" | "Hard" | "Diabolical" | "Impossible"`
  - `solutions: number`
+
+Move type contract:
+- `Move = PlacementMove | EliminationMove` (discriminated union on `type` field)
+- `PlacementMove`: `{ type: "placement"; row; col; value; algorithm }`
+- `EliminationMove`: `{ type: "elimination"; eliminations: Array<{ row; col; value }>; algorithm }`
+- Always narrow on `move.type` before accessing placement-specific fields.
+- `Algorithm = "Full House" | "Naked Single" | "Hidden Single" | "Pointing Pair/Triple"`
 
 Validation reason taxonomy:
 - `duplicate_in_row`

@@ -30,8 +30,12 @@ console.log(solved.board);   // number[][]
 
 const next = Sudoku.nextMove(board);
 console.log(next.status);  // "In progress"
-console.log(next.message); // e.g. "Place 4 in row 1 column 3"
-console.log(next.move);    // { row, col, value } | null
+console.log(next.message); // e.g. "Place 4 in r1c3" or "Eliminate 5 from 2 cell(s) (Pointing Pair/Triple)"
+if (next.move?.type === "placement") {
+    console.log(next.move.row, next.move.col, next.move.value);
+} else if (next.move?.type === "elimination") {
+    console.log(next.move.eliminations); // [{ row, col, value }, ...]
+}
 
 const check = Sudoku.validate(board);
 console.log(check.isValid);  // true/false
@@ -68,14 +72,25 @@ Returns:
 ```ts
 {
     status: "Complete" | "In progress" | "Invalid";
-    move: { row: number; col: number; value: number } | null;
+    move: PlacementMove | EliminationMove | null;
     message: string;
 }
 ```
 
+`move` is a discriminated union:
+
+```ts
+// digit placement
+{ type: "placement"; row: number; col: number; value: number; algorithm: Algorithm }
+
+// candidate elimination (e.g. Pointing Pair/Triple)
+{ type: "elimination"; eliminations: Array<{ row: number; col: number; value: number }>; algorithm: Algorithm }
+```
+
 Notes:
 - `move` is `null` when the board is complete or invalid.
-- `message` uses 1-indexed row/column phrasing.
+- `move.type` must be checked before accessing placement-specific fields (`row`, `col`, `value`).
+- `message` is human-readable: `"Place 4 in r1c3"` for placements, `"Eliminate 5 from 2 cell(s) (Pointing Pair/Triple)"` for eliminations.
 
 ### `Sudoku.validate(boardInput)`
 

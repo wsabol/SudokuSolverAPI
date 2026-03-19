@@ -9,7 +9,7 @@ This project is a TypeScript Node module that validates and solves sudoku puzzle
 
 Authoritative implementation layout:
 - `src/index.ts`: public module API only (`solve`, `nextMove`, `validate`, `describe`) and exported types.
-- `src/sudokuSolver.ts`: `SudokuSolver` class — board parsing, solving (naked/hidden singles), move generation, validation, difficulty, and puzzle status logic.
+- `src/sudokuSolver.ts`: `SudokuSolver` class — board parsing, solving (naked/hidden singles, pointing pair/triple), move generation, validation, difficulty, and puzzle status logic.
 - `src/utils.ts`: pure board utilities (`cloneBoard`, `assertBoardShape`, `parseBoardString`, `duplicateValues`).
 - `src/validate.ts`: `ValidationReason` taxonomy, `ValidationResult` type, and helper factories (`invalidBoardLength`, `invalidBoardCharacters`, `pushUniqueReason`).
 - `tests/sudoku.test.ts`: solver/validator internals and fixture-driven status checks.
@@ -25,6 +25,13 @@ Rules:
 
 Critical module contracts:
 - `solve(boardInput)` returns `{ isValid, board }`; never throws for valid board shape/value domains.
-- `nextMove(boardInput)` returns `{ status, move, message }` where status is `"Complete" | "In progress" | "Invalid"`.
+- `nextMove(boardInput)` returns `{ status, move, message }` where status is `"Complete" | "In progress" | "Invalid"` and `move` is `PlacementMove | EliminationMove | null`.
 - `validate(boardInput)` returns `{ isValid, message, reasons }` and includes `invalid_board_length` / `invalid_board_characters` for invalid board strings.
 - `describe(boardInput)` returns `{ isValid, isComplete, message, difficulty, solutions }`.
+
+Solver internals:
+- `possiblesGrid: number[][][]` tracks candidates per cell; initialized by `calcPossibles()` in `setBoard()`.
+- `setSquareValue(row, col, value)` surgically removes `value` from peer cells (same row, col, box) rather than recalculating all candidates. This preserves any prior eliminations (e.g. from Pointing Pair/Triple).
+- `applyElimination(move: EliminationMove)` removes specified candidates from `possiblesGrid` without placing a digit.
+- `solve()` applies both placement moves (`setSquareValue`) and elimination moves (`applyElimination`) in a loop until no more moves are found.
+- Algorithm priority order: `Full House → Naked Single → Hidden Single → Pointing Pair/Triple`.

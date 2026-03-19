@@ -16,6 +16,8 @@ Testing expectations:
 - Module API tests must cover `solve`, `nextMove`, and `validate` success/edge paths.
 - Validation tests must assert reason types for invalid boards.
 - Validation tests should cover string-specific failures: `invalid_board_length` and `invalid_board_characters`.
+- When accessing `Move` fields in tests, always narrow on `move.type` before accessing placement-specific fields (`row`, `col`, `value`) or elimination-specific fields (`eliminations`). Use `move !== null && move.type === "placement"` — not `move!.type` — to satisfy the TypeScript narrowing.
+- When adding a new algorithm, update affected `solveAnswers` fixture `output` values to reflect the new stopping point (the solver now gets further).
 
 Quality conventions:
 - Keep tests deterministic and fast.
