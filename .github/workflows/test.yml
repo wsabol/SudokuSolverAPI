@@ -2,9 +2,10 @@ name: CI/CD
 
 on:
   pull_request:
+    branches: [ "main", "develop" ]
 
 jobs:
-  ci:
+  test:
     name: Unit Tests with Coverage
     runs-on: ubuntu-latest
 

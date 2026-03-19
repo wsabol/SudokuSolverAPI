@@ -1,6 +1,6 @@
 {
-    "name": "sudoku-solver",
-    "version": "1.0.0",
+    "name": "@wsabol/sudoku-solver",
+    "version": "0.1.0",
     "description": "TypeScript Sudoku solver module with solve, next move, describe, and validate APIs.",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -10,16 +10,26 @@
             "import": "./dist/index.js"
         }
     },
+    "files": [
+        "dist"
+    ],
     "scripts": {
         "build": "tsc -p tsconfig.build.json",
+        "prepublishOnly": "npm run build",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
-        "typecheck": "tsc --noEmit",
-        "test:watch": "vitest"
+        "test:watch": "vitest",
+        "typecheck": "tsc --noEmit"
     },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
+    "keywords": [
+        "sudoku",
+        "solver",
+        "puzzle",
+        "sudoku engine",
+        "sudoku solver"
+    ],
+    "author": "Will Sabol",
+    "license": "MIT",
     "type": "module",
     "devDependencies": {
         "@types/node": "^25.5.0",

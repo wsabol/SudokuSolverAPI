@@ -11,7 +11,8 @@
     },
     "include": [
         "src/index.ts",
-        "src/sudoku.ts",
+        "src/sudokuSolver.ts",
+        "src/utils.ts",
         "src/validate.ts"
     ]
 }
