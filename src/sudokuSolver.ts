@@ -55,6 +55,10 @@ export default class SudokuSolver {
         return [...this.possiblesGrid[row][col]];
     }
 
+    setPossibles(row: number, col: number, possibles: number[]): void {
+        this.possiblesGrid[row][col] = possibles.filter((v) => v > 0 && v <= 9).sort((a, b) => a - b);
+    }
+
     setSquareValue(row: number, col: number, value: number): void {
         this.board[row][col] = value;
         this.possiblesGrid[row][col] = [];
