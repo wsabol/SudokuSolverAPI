@@ -157,7 +157,7 @@ describe("Node module API", () => {
             expect(result.isValid).toBe(false);
             expect(result.isComplete).toBe(false);
             expect(result.solutions).toBe(0);
-            expect(result.difficulty).toBe("");
+            expect(result.difficulty).toBe(null);
         });
 
         it("returns a non-empty difficulty string for a valid board", () => {

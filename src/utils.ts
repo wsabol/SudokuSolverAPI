@@ -1,4 +1,4 @@
-import { type Board } from "./sudokuSolver.js";
+import type { Board } from "./boardGeo.js";
 
 export function boxNumber(row: number, col: number): number {
     return Math.floor(row / 3) * 3 + Math.floor(col / 3) + 1; // 1-9

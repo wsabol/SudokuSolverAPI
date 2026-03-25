@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import SudokuSolver from "../src/sudokuSolver";
+import { PlacementMove } from "../src/move";
 import { parseBoardString } from "../src/utils";
 
 const BOARD =
@@ -1193,7 +1194,7 @@ describe("SudokuSolver", () => {
             const move = s.getNextMove();
             expect(move).not.toBeNull();
             expect(move!.type).toBe("placement");
-            const placement = move as import("../src/sudokuSolver").PlacementMove;
+            const placement = move as PlacementMove;
             s.setSquareValue(placement.row, placement.col, placement.value);
             expect(s.toArray()[placement.row][placement.col]).toBe(placement.value);
             expect(s.getPossibles(placement.row, placement.col)).toEqual([]);

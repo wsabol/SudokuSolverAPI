@@ -1,5 +1,7 @@
-import SudokuSolver, { type Algorithm, type Board, type Move, type PlacementMove, type EliminationMove } from "./sudokuSolver.js";
-import { invalidBoardLength, invalidBoardCharacters, type ValidationReason, type ValidationResult } from "./validate.js";
+import SudokuSolver, { type Algorithm, type DifficultyLevel } from "./sudokuSolver.js";
+import { invalidBoardLength, invalidBoardCharacters, ValidationReason, ValidationResult } from "./validate.js";
+import type { Board } from "./boardGeo.js";
+import type { Move, MoveStatus, EliminationMove, PlacementMove } from "./move.js";
 
 interface SolveResult {
     isValid: boolean;
@@ -10,11 +12,9 @@ interface DescribeResult {
     isValid: boolean;
     isComplete: boolean;
     message: string,
-    difficulty: string,
+    difficulty: DifficultyLevel | null,
     solutions: number,
 }
-
-type MoveStatus = "Complete" | "In progress" | "Invalid";
 
 interface MoveResult {
     status: MoveStatus;
@@ -49,11 +49,7 @@ function nextMove(boardInput: string | Board): MoveResult {
         message = "No more moves";
     } else {
         message = move.message;
-        if (move.type === "placement") {
-            sudoku.setSquareValue(move.row, move.col, move.value);
-        } else {
-            sudoku.applyElimination(move);
-        }
+        sudoku.applyMove(move);
     }
 
     return {
@@ -86,7 +82,7 @@ function describeBoard(boardInput: string | Board): DescribeResult {
             isValid: false,
             isComplete: false,
             message: initValidation.message,
-            difficulty: '',
+            difficulty: null,
             solutions: 0,
         }
     }

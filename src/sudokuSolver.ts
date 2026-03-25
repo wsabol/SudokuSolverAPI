@@ -1,7 +1,7 @@
 import { cloneBoard, assertBoardShape, parseBoardString, duplicateValues, boxNumber } from "./utils.js";
 import { ValidationReason, ValidationResult, pushUniqueReason } from "./validate.js";
-
-export type Board = number[][];
+import type { Board } from "./boardGeo.js";
+import type { Move, PlacementMove, EliminationMove } from "./move.js";
 
 export type Algorithm =
     | "Last Digit"
@@ -13,30 +13,20 @@ export type Algorithm =
     | "Naked Triple"
     | "Naked Quad";
 
+export type DifficultyLevel = "Easy" | "Medium" | "Hard" | "Diabolical" | "Impossible";
+
+export type ValidationReasonType =
+    | "duplicate_in_row"
+    | "duplicate_in_column"
+    | "duplicate_in_box"
+    | "invalid_value"
+    | "invalid_board_length"
+    | "invalid_board_characters"
+    | "empty_cell_no_candidates"
+    | "too_many_empty_cells";
+
 /** Drives `findBestMove` order; not the same as `Move.algorithm` (specific technique on the move). */
 type SearchPhase = "NakedSingle" | "HiddenSingle" | "Pointing" | "NakedSubset";
-
-export interface PlacementMove {
-    type: "placement";
-    row: number;
-    col: number;
-    value: number;
-    algorithm: Algorithm;
-    message: string;
-    reasoning: string;
-}
-
-export interface EliminationMove {
-    type: "elimination";
-    eliminations: Array<{ row: number; col: number; value: number }>;
-    algorithm: Algorithm;
-    message: string;
-    reasoning: string;
-}
-
-export type Move = PlacementMove | EliminationMove;
-
-export type DifficultyLevel = "Easy" | "Medium" | "Hard" | "Diabolical" | "Impossible";
 
 const COMPLETE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -104,12 +94,27 @@ export default class SudokuSolver {
         }
     }
 
+    applyMove(move: Move): void {
+        if (move.type === "placement") {
+            this.setSquareValue(move.row, move.col, move.value);
+        } else {
+            this.applyElimination(move);
+        }
+    }
+
     isComplete(): boolean {
         return this.board.every((row) => row.every((v) => v !== 0));
     }
 
     countEmptyCells(): number {
         return this.board.flat().filter((v) => v === 0).length;
+    }
+
+    countPlaced(value: number = 0): number {
+        if (value === 0) {
+            return 81 - this.countEmptyCells(); // total cells - empty cells
+        }
+        return this.board.flat().filter((v) => v === value).length;
     }
 
     validate(): ValidationResult {
@@ -245,11 +250,7 @@ export default class SudokuSolver {
 
         let move = this.findBestMove();
         while (move) {
-            if (move.type === "placement") {
-                this.setSquareValue(move.row, move.col, move.value);
-            } else {
-                this.applyElimination(move);
-            }
+            this.applyMove(move);
             move = this.findBestMove();
         }
 
@@ -378,12 +379,12 @@ export default class SudokuSolver {
                         const rowValues = this.getRow(row);
                         if (rowValues.filter((v) => v === 0).length === 1) {
                             algo = "Full House";
-                            house = "row ${row + 1}";
+                            house = `row ${row + 1}`;
                         }
                         const colValues = this.getColumn(col);
                         if (colValues.filter((v) => v === 0).length === 1) {
                             algo = "Full House";
-                            house = "column ${col + 1}";
+                            house = `column ${col + 1}`;
                         }
                         const boxValues = this.getBox(this.boxIndex(row, col));
                         if (boxValues.filter((v) => v === 0).length === 1) {
@@ -395,8 +396,7 @@ export default class SudokuSolver {
                         if (algo === "Full House") {
                             reasoning = `This is the last empty cell in ${house} and must be ${placeValue}.`;
                         } else {
-                            const placementsOfDigit = this.board.flat().filter((v) => v === placeValue).length;
-                            if (placementsOfDigit === 8) {
+                            if (this.countPlaced(placeValue) === 8) {
                                 algo = "Last Digit";
                                 reasoning = this.lastDigitReasoning(placeValue);
                             } else {
@@ -432,8 +432,7 @@ export default class SudokuSolver {
                 const col = candidates[0];
                 let algorithm: Algorithm = "Hidden Single";
                 let reasoning = this.hiddenSingleReasoning(`row ${row + 1}`, value);
-                const placementsOfDigit = this.board.flat().filter((v) => v === value).length;
-                if (placementsOfDigit === 8) {
+                if (this.countPlaced(value) === 8) {
                     algorithm = "Last Digit";
                     reasoning = this.lastDigitReasoning(value);
                 }
@@ -455,8 +454,7 @@ export default class SudokuSolver {
                 const row = candidates[0];
                 let algorithm: Algorithm = "Hidden Single";
                 let reasoning = this.hiddenSingleReasoning(`column ${col + 1}`, value);
-                const placementsOfDigit = this.board.flat().filter((v) => v === value).length;
-                if (placementsOfDigit === 8) {
+                if (this.countPlaced(value) === 8) {
                     algorithm = "Last Digit";
                     reasoning = this.lastDigitReasoning(value);
                 }
@@ -479,8 +477,7 @@ export default class SudokuSolver {
                 const { row: r, col: c } = candidates[0];
                 let algorithm: Algorithm = "Hidden Single";
                 let reasoning = this.hiddenSingleReasoning(`box ${boxNumber(r, c)}`, value);
-                const placementsOfDigit = this.board.flat().filter((v) => v === value).length;
-                if (placementsOfDigit === 8) {
+                if (this.countPlaced(value) === 8) {
                     algorithm = "Last Digit";
                     reasoning = this.lastDigitReasoning(value);
                 }
