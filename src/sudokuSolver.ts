@@ -8,7 +8,8 @@ export type Algorithm =
     | "Full House"
     | "Naked Single"
     | "Hidden Single"
-    | "Pointing Pair/Triple"
+    | "Pointing Pair"
+    | "Pointing Triple"
     | "Naked Pair"
     | "Naked Triple"
     | "Naked Quad";
@@ -29,6 +30,46 @@ export type ValidationReasonType =
 type SearchPhase = "NakedSingle" | "HiddenSingle" | "Pointing" | "NakedSubset";
 
 const COMPLETE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+/** Row/column/box label for a set of cells that all lie in one house. */
+type HouseKind = "row" | "column" | "box";
+
+function uniqueCellCoordinates(items: ReadonlyArray<{ row: number; col: number }>): { row: number; col: number }[] {
+    const seen = new Set<string>();
+    const out: { row: number; col: number }[] = [];
+    for (const { row, col } of items) {
+        const k = `${row},${col}`;
+        if (!seen.has(k)) {
+            seen.add(k);
+            out.push({ row, col });
+        }
+    }
+    return out;
+}
+
+/**
+ * If every cell lies in the same row, same column, or same 3×3 box, return that house.
+ * Row wins over column when both apply (e.g. a single cell). Otherwise `null`.
+ */
+function sharedHouseContainingCells(
+    cells: ReadonlyArray<{ row: number; col: number }>
+): { kind: HouseKind; wherePhrase: string } | null {
+    if (cells.length === 0) {
+        return null;
+    }
+    const first = cells[0]!;
+    if (cells.every((c) => c.row === first.row)) {
+        return { kind: "row", wherePhrase: `row ${first.row + 1}` };
+    }
+    if (cells.every((c) => c.col === first.col)) {
+        return { kind: "column", wherePhrase: `column ${first.col + 1}` };
+    }
+    const box = boxNumber(first.row, first.col);
+    if (cells.every((c) => boxNumber(c.row, c.col) === box)) {
+        return { kind: "box", wherePhrase: `box ${box}` };
+    }
+    return null;
+}
 
 export default class SudokuSolver {
     private static readonly SEARCH_PHASES: SearchPhase[] = [
@@ -335,11 +376,16 @@ export default class SudokuSolver {
     ): EliminationMove {
         const digits = [...new Set(eliminations.map((e) => e.value))].sort((a, b) => a - b);
         const digitPart = digits.length === 1 ? String(digits[0]) : `{${digits.join("/")}}`;
+        const uniqueCells = uniqueCellCoordinates(eliminations);
+        const uniqueCellCount = uniqueCells.length;
+        const cellWord = uniqueCellCount === 1 ? "cell" : "cells";
+        const housePhrase = sharedHouseContainingCells(uniqueCells)?.wherePhrase;
+        const wherePart = housePhrase ? ` in ${housePhrase}` : "";
         return {
             type: "elimination",
             eliminations,
             algorithm,
-            message: `Eliminate ${digitPart} from ${eliminations.length} cell(s) (${algorithm})`,
+            message: `Eliminate ${digitPart} from ${uniqueCellCount} ${cellWord}${wherePart} (${algorithm})`,
             reasoning,
         };
     }
@@ -513,8 +559,9 @@ export default class SudokuSolver {
                         }
                     }
                     if (eliminations.length > 0) {
+                        const algorithm = cells.length === 2 ? "Pointing Pair" : "Pointing Triple";
                         const reasoning = `In box ${boxNum}, every candidate for ${digit} lies in row ${sharedRow + 1}, so ${digit} cannot appear elsewhere in that row outside the box.`;
-                        return this.finalizeElimination(eliminations, "Pointing Pair/Triple", reasoning);
+                        return this.finalizeElimination(eliminations, algorithm, reasoning);
                     }
                 }
 
@@ -529,8 +576,9 @@ export default class SudokuSolver {
                         }
                     }
                     if (eliminations.length > 0) {
+                        const algorithm = cells.length === 2 ? "Pointing Pair" : "Pointing Triple";
                         const reasoning = `In box ${boxNum}, every candidate for ${digit} lies in column ${sharedCol + 1}, so ${digit} cannot appear elsewhere in that column outside the box.`;
-                        return this.finalizeElimination(eliminations, "Pointing Pair/Triple", reasoning);
+                        return this.finalizeElimination(eliminations, algorithm, reasoning);
                     }
                 }
             }
@@ -569,15 +617,13 @@ export default class SudokuSolver {
     /** `houseCells` is one full row, column, or box (9 cells). */
     private getHouseContext(houseCells: { row: number; col: number }[]): {
         wherePhrase: string;
-        sameKindWord: "row" | "column" | "box";
+        sameKindWord: HouseKind;
     } {
+        const shared = sharedHouseContainingCells(houseCells);
+        if (shared) {
+            return { wherePhrase: shared.wherePhrase, sameKindWord: shared.kind };
+        }
         const h = houseCells[0]!;
-        if (houseCells.every((c) => c.row === h.row)) {
-            return { wherePhrase: `row ${h.row + 1}`, sameKindWord: "row" };
-        }
-        if (houseCells.every((c) => c.col === h.col)) {
-            return { wherePhrase: `column ${h.col + 1}`, sameKindWord: "column" };
-        }
         return { wherePhrase: `box ${boxNumber(h.row, h.col)}`, sameKindWord: "box" };
     }
 

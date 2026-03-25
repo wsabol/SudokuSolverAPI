@@ -8,7 +8,7 @@ alwaysApply: true
 Public exports from `src/index.ts`:
 - `default Sudoku` object with: `solve`, `nextMove`, `validate`, `describe`
 - Named: `SudokuSolver` class
-- Types: `Board`, `Move`, `PlacementMove`, `EliminationMove`, `ValidationReason`, `ValidationResult`, `SolveResult`, `MoveResult`, `MoveStatus`, `DescribeResult`
+- Types: `Board`, `Move`, `PlacementMove`, `EliminationMove`, `ValidationReason`, `ValidationResult`, `SolveResult`, `MoveResult`, `MoveStatus`, `DescribeResult` (shape sources: `boardGeo.ts` / `move.ts` / `validate.ts` / `index.ts` interfaces)
 
 Board input contract:
 - Board string must be exactly 81 characters.
@@ -22,7 +22,7 @@ Output contract:
 - `nextMove()` returns `MoveResult`:
  - `status: "Complete" | "In progress" | "Invalid"`
  - `move: PlacementMove | EliminationMove | null`
- - `message: string`
+ - `message: string` (when `move` non-null, equals `move.message`; invalid/complete use solver-generated status text)
 - `validate()` returns `ValidationResult`:
  - `isValid: boolean`
  - `message: string`
@@ -31,7 +31,7 @@ Output contract:
  - `isValid: boolean`
  - `isComplete: boolean`
  - `message: string`
- - `difficulty: "Easy" | "Medium" | "Hard" | "Diabolical" | "Impossible"`
+ - `difficulty: "Easy" | "Medium" | "Hard" | "Diabolical" | "Impossible" | null` (`null` when `isValid === false`)
  - `solutions: number`
 
 Move type contract:
@@ -39,7 +39,7 @@ Move type contract:
 - `PlacementMove`: `{ type: "placement"; row; col; value; algorithm; message; reasoning }`
 - `EliminationMove`: `{ type: "elimination"; eliminations: Array<{ row; col; value }>; algorithm; message; reasoning }`
 - Always narrow on `move.type` before accessing placement-specific fields.
-- `Algorithm = "Full House" | "Naked Single" | "Hidden Single" | "Pointing Pair/Triple" | "Naked Pair" | "Naked Triple" | "Naked Quad"` (specific technique on the move; `findBestMove` order uses internal phases in `sudokuSolver.ts`, not part of the public API)
+- `Algorithm = "Last Digit" | "Full House" | "Naked Single" | "Hidden Single" | "Pointing Pair" | "Pointing Triple" | "Naked Pair" | "Naked Triple" | "Naked Quad"` (specific technique on the move; phase order in `sudokuSolver.ts` `SEARCH_PHASES`, not exported; pointing label follows box-line candidate count 2 vs 3)
 
 Validation reason taxonomy:
 - `duplicate_in_row`

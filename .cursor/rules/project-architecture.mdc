@@ -8,10 +8,12 @@ alwaysApply: true
 This project is a TypeScript Node module that validates and solves sudoku puzzles.
 
 Authoritative implementation layout:
-- `src/index.ts`: public module API only (`solve`, `nextMove`, `validate`, `describe`) and exported types.
-- `src/sudokuSolver.ts`: `SudokuSolver` class — board parsing, solving (naked/hidden singles, pointing pair/triple, naked pair/triple/quad), move generation, validation, difficulty, and puzzle status logic.
-- `src/utils.ts`: pure board utilities (`cloneBoard`, `assertBoardShape`, `parseBoardString`, `duplicateValues`).
-- `src/validate.ts`: `ValidationReason` taxonomy, `ValidationResult` type, and helper factories (`invalidBoardLength`, `invalidBoardCharacters`, `pushUniqueReason`).
+- `src/index.ts`: public module API only (`solve`, `nextMove`, `validate`, `describe`) and re-exported types.
+- `src/boardGeo.ts`: `Board` type (`number[][]`).
+- `src/move.ts`: `Move`, `PlacementMove`, `EliminationMove`, `MoveStatus` (each move includes `message` + `reasoning`; `Algorithm` imported from solver for typing).
+- `src/sudokuSolver.ts`: `SudokuSolver` class — parsing, solving, move generation, validation, difficulty; `finalizePlacement` / `finalizeElimination` build `message` + technique-specific `reasoning`.
+- `src/utils.ts`: pure helpers (`boxNumber`, `cloneBoard`, `assertBoardShape`, `parseBoardString`, `duplicateValues`, …).
+- `src/validate.ts`: `ValidationReason` / `ValidationResult`, `pushUniqueReason`, string invalid factories.
 - `tests/sudoku.test.ts`: solver/validator internals and fixture-driven status checks.
 - `tests/module.test.ts`: module-level API behavior checks.
 
@@ -25,13 +27,16 @@ Rules:
 
 Critical module contracts:
 - `solve(boardInput)` returns `{ isValid, board }`; never throws for valid board shape/value domains.
-- `nextMove(boardInput)` returns `{ status, move, message }` where status is `"Complete" | "In progress" | "Invalid"` and `move` is `PlacementMove | EliminationMove | null`.
+- `nextMove(boardInput)` returns `{ status, move, message }`; applies the returned move via `SudokuSolver.applyMove(move)` (placement → `setSquareValue`, elimination → `applyElimination`). When `move` is non-null, `message === move.message`.
 - `validate(boardInput)` returns `{ isValid, message, reasons }` and includes `invalid_board_length` / `invalid_board_characters` for invalid board strings.
 - `describe(boardInput)` returns `{ isValid, isComplete, message, difficulty, solutions }`.
 
 Solver internals:
 - `possiblesGrid: number[][][]` tracks candidates per cell; initialized by `calcPossibles()` in `setBoard()`.
-- `setSquareValue(row, col, value)` surgically removes `value` from peer cells (same row, col, box) rather than recalculating all candidates. This preserves any prior eliminations (e.g. from Pointing Pair/Triple or naked subsets).
+- `setSquareValue(row, col, value)` surgically removes `value` from peer cells (same row, col, box) rather than recalculating all candidates. This preserves any prior eliminations (e.g. from pointing moves or naked subsets).
+- Pointing: `Move.algorithm` is `"Pointing Pair"` or `"Pointing Triple"` according to how many cells in the box (along one row or column) still have the digit as a candidate.
 - `applyElimination(move: EliminationMove)` removes specified candidates from `possiblesGrid` without placing a digit.
-- `solve()` applies both placement moves (`setSquareValue`) and elimination moves (`applyElimination`) in a loop until no more moves are found.
-- `findBestMove()` walks internal `SEARCH_PHASES` (not exported): `SinglesPreferFullHouse` → `Singles` → `HiddenSingle` → `Pointing` → `NakedSubset`. Returned `Move.algorithm` is the specific label (e.g. `"Full House"`, `"Naked Pair"`).
+- `applyMove(move: Move)` branches on `move.type` to placement vs elimination.
+- `solve()` loops `findBestMove` + `applyMove` until stuck or complete.
+- `findBestMove()` walks `SEARCH_PHASES` (not exported): `NakedSingle` → `HiddenSingle` → `Pointing` → `NakedSubset`. `Move.algorithm` is the specific label (e.g. `"Last Digit"`, `"Full House"`, `"Naked Pair"`); naked-single path can upgrade to Full House / Last Digit.
+- Reasoning examples: pointing names `3×3 box` index (1–9, `boxNumber`); naked subset pattern `Naked Pair 7/9 in row 5 … same row` (digits `/`-sorted, house = row | column | box).

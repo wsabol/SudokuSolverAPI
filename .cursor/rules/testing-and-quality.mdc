@@ -17,6 +17,8 @@ Testing expectations:
 - Validation tests must assert reason types for invalid boards.
 - Validation tests should cover string-specific failures: `invalid_board_length` and `invalid_board_characters`.
 - When accessing `Move` fields in tests, always narrow on `move.type` before accessing placement-specific fields (`row`, `col`, `value`) or elimination-specific fields (`eliminations`). Use `move !== null && move.type === "placement"` — not `move!.type` — to satisfy the TypeScript narrowing.
+- Synthetic `EliminationMove` / `PlacementMove` literals in tests must include `message` and `reasoning` (required by the type).
+- For `nextMove`, optional checks: `move.message === result.message`, non-empty `reasoning` when exercising real moves.
 - When adding a new algorithm, update affected `solveAnswers` fixture `output` values to reflect the new stopping point (the solver now gets further).
 
 Quality conventions:

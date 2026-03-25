@@ -1221,8 +1221,8 @@ describe("SudokuSolver", () => {
             const eliminationMove = {
                 type: "elimination" as const,
                 eliminations: [{ row: targetRow, col: targetCol, value: candidateToRemove }],
-                algorithm: "Pointing Pair/Triple" as const,
-                message: `Eliminate ${candidateToRemove} from 1 cell(s) (Pointing Pair/Triple)`,
+                algorithm: "Pointing Pair" as const,
+                message: `Eliminate ${candidateToRemove} from 1 cell in row ${targetRow + 1} (Pointing Pair)`,
                 reasoning: "Synthetic elimination for unit test.",
             };
             s.applyElimination(eliminationMove);
@@ -1313,13 +1313,12 @@ describe("SudokuSolver", () => {
     });
 
     describe("findPointingPairTriple()", () => {
-        // This puzzle requires Pointing Pair/Triple to make progress:
-        // Box 0 (top-left) has digit 2 only in row 0 → eliminates 2 from rest of row 0
-        // Source: classic Pointing Pair/Triple test case
+        // After placements are exhausted, the next move is a box-line elimination (pointing).
+        // Here digit 9 appears as a candidate in three cells of one box along the same row → Pointing Triple.
         const POINTING_PAIR_BOARD =
             "000030086000020000080960301070083000000000000000610020304079010000050000690040000";
 
-        it("finds a Pointing Pair/Triple elimination move when placement algorithms are exhausted", () => {
+        it("finds a Pointing Triple elimination move when placement algorithms are exhausted", () => {
             const s = new SudokuSolver(POINTING_PAIR_BOARD);
             // Drain all placement moves first
             let move = s.getNextMove();
@@ -1327,10 +1326,9 @@ describe("SudokuSolver", () => {
                 s.setSquareValue(move.row, move.col, move.value);
                 move = s.getNextMove();
             }
-            // The next move must be an elimination via Pointing Pair/Triple
             expect(move).not.toBeNull();
             expect(move!.type).toBe("elimination");
-            expect(move!.algorithm).toBe("Pointing Pair/Triple");
+            expect(move!.algorithm).toBe("Pointing Triple");
             if (move !== null && move.type === "elimination") {
                 expect(move.eliminations.length).toBeGreaterThan(0);
                 for (const e of move.eliminations) {
@@ -1359,11 +1357,10 @@ describe("SudokuSolver", () => {
             }
         });
 
-        it("solve() makes progress using Pointing Pair/Triple eliminations", () => {
+        it("solve() makes progress after pointing eliminations", () => {
             const s = new SudokuSolver(POINTING_PAIR_BOARD);
             const initialEmpty = s.countEmptyCells();
             s.solve();
-            // Verify the solver made further progress with Pointing Pair/Triple than without
             expect(s.countEmptyCells()).toBeLessThan(initialEmpty);
         });
     });
@@ -1380,7 +1377,7 @@ describe("SudokuSolver", () => {
                 move = s.getNextMove();
             }
             expect(move?.type).toBe("elimination");
-            expect(move?.algorithm).toBe("Pointing Pair/Triple");
+            expect(move?.algorithm).toBe("Pointing Pair");
             if (move !== null && move.type === "elimination") {
                 s.applyElimination(move);
             }
