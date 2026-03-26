@@ -131,7 +131,7 @@ const solveAnswers = [
         }
     },
     {
-        title: 'Intersection Removeal',
+        title: 'Intersection Removal',
         input: '000921003009000060000000500080403006007000800500700040003000000020000700800195000',
         output: '700921483009500060008000500080453076007000800500700040003000000020000700870195000',
         describe: {
@@ -1417,6 +1417,60 @@ describe("SudokuSolver", () => {
                 if (!m) break;
                 if (m.type === "elimination" && m.algorithm === "Naked Quad") {
                     expect(m.eliminations.length).toBeGreaterThan(0);
+                    saw = true;
+                    break;
+                }
+                if (m.type === "placement") {
+                    s.setSquareValue(m.row, m.col, m.value);
+                } else {
+                    s.applyElimination(m);
+                }
+            }
+            expect(saw).toBe(true);
+        });
+    });
+
+    describe("Hidden subset (Pair / Triple / Quad)", () => {
+        const SIMPLE_COLOURING_RULE_4 =
+            "090010030800300009070006005080003000052000370000400080900800040600009008010050090";
+
+        it("finds Hidden Pair elimination on the Simple Colouring Rule 4 fixture solve path", () => {
+            const s = new SudokuSolver(SIMPLE_COLOURING_RULE_4);
+            let saw = false;
+            for (let i = 0; i < 200; i++) {
+                const m = s.getNextMove();
+                if (!m) break;
+                if (m.type === "elimination" && m.algorithm === "Hidden Pair") {
+                    expect(m.eliminations.length).toBeGreaterThan(0);
+                    expect(m.reasoning).toMatch(/Hidden Pair \d+\/\d+ in column \d+/);
+                    expect(m.reasoning).toMatch(/appear only in r\d+c\d+, r\d+c\d+/);
+                    expect(m.reasoning).toContain("candidates other than");
+                    saw = true;
+                    break;
+                }
+                if (m.type === "placement") {
+                    s.setSquareValue(m.row, m.col, m.value);
+                } else {
+                    s.applyElimination(m);
+                }
+            }
+            expect(saw).toBe(true);
+        });
+
+        const HIDDEN_QUAD_FIXTURE =
+            "000705006000040081000030050041000008060000020500000430000070000978050000300201000";
+
+        it("finds Hidden Quad elimination on the Hidden Quad fixture solve path", () => {
+            const s = new SudokuSolver(HIDDEN_QUAD_FIXTURE);
+            let saw = false;
+            for (let i = 0; i < 400; i++) {
+                const m = s.getNextMove();
+                if (!m) break;
+                if (m.type === "elimination" && m.algorithm === "Hidden Quad") {
+                    expect(m.eliminations.length).toBeGreaterThan(0);
+                    expect(m.reasoning).toMatch(/Hidden Quad [\d\/]+ in box \d+/);
+                    expect(m.reasoning).toContain("appear only in");
+                    expect(m.reasoning).toContain("candidates other than");
                     saw = true;
                     break;
                 }

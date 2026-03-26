@@ -12,7 +12,10 @@ export type Algorithm =
     | "Pointing Triple"
     | "Naked Pair"
     | "Naked Triple"
-    | "Naked Quad";
+    | "Naked Quad"
+    | "Hidden Pair"
+    | "Hidden Triple"
+    | "Hidden Quad";
 
 export type DifficultyLevel = "Easy" | "Medium" | "Hard" | "Diabolical" | "Impossible";
 
@@ -27,7 +30,7 @@ export type ValidationReasonType =
     | "too_many_empty_cells";
 
 /** Drives `findBestMove` order; not the same as `Move.algorithm` (specific technique on the move). */
-type SearchPhase = "NakedSingle" | "HiddenSingle" | "Pointing" | "NakedSubset";
+type SearchPhase = "NakedSingle" | "HiddenSingle" | "Pointing" | "NakedSubset" | "HiddenSubset";
 
 const COMPLETE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -77,6 +80,7 @@ export default class SudokuSolver {
         "HiddenSingle",
         "Pointing",
         "NakedSubset",
+        "HiddenSubset",
     ];
 
     private board: Board;
@@ -408,6 +412,8 @@ export default class SudokuSolver {
                 return this.findPointingPairTriple();
             case "NakedSubset":
                 return this.findNakedSubsetElimination();
+            case "HiddenSubset":
+                return this.findHiddenSubsetElimination();
         }
     }
 
@@ -681,6 +687,80 @@ export default class SudokuSolver {
         };
 
         return dfs(0);
+    }
+
+    private findHiddenSubsetElimination(): EliminationMove | null {
+        for (const houseCells of this.eachHouseInOrder()) {
+            for (let k = 2; k <= 4; k++) {
+                const move = this.tryHiddenSubsetInHouse(houseCells, k);
+                if (move) return move;
+            }
+        }
+        return null;
+    }
+
+    private tryHiddenSubsetInHouse(houseCells: { row: number; col: number }[], k: number): EliminationMove | null {
+        const algorithm: Algorithm = k === 2 ? "Hidden Pair" : k === 3 ? "Hidden Triple" : "Hidden Quad";
+        const { wherePhrase, sameKindWord } = this.getHouseContext(houseCells);
+        const digitIndices: number[] = [];
+
+        const dfsDigits = (start: number): EliminationMove | null => {
+            if (digitIndices.length === k) {
+                const digits = digitIndices.map((i) => COMPLETE[i]!);
+                const digitSet = new Set(digits);
+                for (const d of digits) {
+                    let seen = false;
+                    for (const { row, col } of houseCells) {
+                        if (this.board[row][col] === 0 && this.possiblesGrid[row][col].includes(d)) {
+                            seen = true;
+                            break;
+                        }
+                    }
+                    if (!seen) {
+                        return null;
+                    }
+                }
+                const reserved: { row: number; col: number }[] = [];
+                for (const { row, col } of houseCells) {
+                    if (this.board[row][col] !== 0) {
+                        continue;
+                    }
+                    for (const d of digits) {
+                        if (this.possiblesGrid[row][col].includes(d)) {
+                            reserved.push({ row, col });
+                            break;
+                        }
+                    }
+                }
+                if (reserved.length !== k) {
+                    return null;
+                }
+                const eliminations: Array<{ row: number; col: number; value: number }> = [];
+                for (const { row, col } of reserved) {
+                    for (const v of this.possiblesGrid[row][col]) {
+                        if (!digitSet.has(v)) {
+                            eliminations.push({ row, col, value: v });
+                        }
+                    }
+                }
+                if (eliminations.length === 0) {
+                    return null;
+                }
+                const digitStr = [...digits].sort((a, b) => a - b).join("/");
+                const cellPhrase = reserved.map(({ row, col }) => `r${row + 1}c${col + 1}`).join(", ");
+                const reasoning = `${algorithm} ${digitStr} in ${wherePhrase}: in that ${sameKindWord}, those digits appear only in ${cellPhrase}, so candidates other than ${digitStr} can be removed from those cells.`;
+                return this.finalizeElimination(eliminations, algorithm, reasoning);
+            }
+            for (let i = start; i < 9; i++) {
+                digitIndices.push(i);
+                const res = dfsDigits(i + 1);
+                digitIndices.pop();
+                if (res) return res;
+            }
+            return null;
+        };
+
+        return dfsDigits(0);
     }
 
     private findHiddenSingle(): PlacementMove | null {
