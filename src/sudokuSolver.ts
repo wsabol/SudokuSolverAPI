@@ -375,7 +375,7 @@ export default class SudokuSolver {
         reasoning: string
     ): EliminationMove {
         const digits = [...new Set(eliminations.map((e) => e.value))].sort((a, b) => a - b);
-        const digitPart = digits.length === 1 ? String(digits[0]) : `{${digits.join("/")}}`;
+        const digitPart = digits.length === 1 ? String(digits[0]) : `${digits.join("/")}`;
         const uniqueCells = uniqueCellCoordinates(eliminations);
         const uniqueCellCount = uniqueCells.length;
         const cellWord = uniqueCellCount === 1 ? "cell" : "cells";
