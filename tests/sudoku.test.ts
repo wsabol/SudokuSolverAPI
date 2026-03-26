@@ -61,7 +61,7 @@ const solveAnswers = [
     {
         title: 'Diabolical',
         input: '700409000000075300050100070640000010100080004090000036020004060007950000000708005',
-        output: '700409000000875300050100070643097010170683004090041736020314067007950003000708005',
+        output: '700409000000875300050100070643097010170683004090041736020314067407950003000708005',
         describe: {
             isValid: true,
             isComplete: false,
@@ -325,7 +325,7 @@ const solveAnswers = [
     {
         title: '3D Medusa Rule 5',
         input: '080276049000000000200309008001000060007000800090000500900608003000000000520904000',
-        output: '085276049709000000206309008001000060007000800092000500974608003000000000520904000',
+        output: '085276049709000020206309008001000060007000800092000500974608203000000000520904000',
         describe: {
             isValid: true,
             isComplete: false,
@@ -1365,6 +1365,68 @@ describe("SudokuSolver", () => {
         });
     });
 
+    describe("findXWing()", () => {
+        const NAKED_TRIPLES_FIXTURE =
+            "000000000001900500560310090100600028004000700270004003040068035002005900000000000";
+        const DIABOLICAL_INPUT =
+            "700409000000075300050100070640000010100080004090000036020004060007950000000708005";
+
+        it("finds a row-based X-Wing elimination after placements and Pointing (transposed Naked Triples path)", () => {
+            const rows = NAKED_TRIPLES_FIXTURE.match(/.{9}/g)!.map((line) => line.split("").map(Number));
+            let transposed = "";
+            for (let c = 0; c < 9; c++) {
+                for (let r = 0; r < 9; r++) {
+                    transposed += String(rows[r]![c]);
+                }
+            }
+            const s = new SudokuSolver(transposed);
+            let move = s.getNextMove();
+            while (move && move.type === "placement") {
+                s.setSquareValue(move.row, move.col, move.value);
+                move = s.getNextMove();
+            }
+            expect(move?.algorithm).toBe("Pointing Pair");
+            if (move !== null && move.type === "elimination") {
+                s.applyElimination(move);
+            }
+            move = s.getNextMove();
+            expect(move).not.toBeNull();
+            expect(move!.type).toBe("elimination");
+            expect(move!.algorithm).toBe("X-Wing");
+            if (move !== null && move.type === "elimination") {
+                expect(move.eliminations.length).toBeGreaterThan(0);
+                expect(move.reasoning).toMatch(/X-Wing on \d+: rows \d+ and \d+ each have/);
+                expect(move.reasoning).toContain("cannot appear elsewhere in those columns");
+            }
+        });
+
+        it("finds a column-based X-Wing on the Diabolical fixture solve path", () => {
+            const s = new SudokuSolver(DIABOLICAL_INPUT);
+            let saw = false;
+            for (let i = 0; i < 50; i++) {
+                const m = s.getNextMove();
+                if (!m) break;
+                if (
+                    m.type === "elimination" &&
+                    m.algorithm === "X-Wing" &&
+                    m.reasoning.includes("columns ") &&
+                    m.reasoning.includes(" only in rows ")
+                ) {
+                    expect(m.eliminations.length).toBeGreaterThan(0);
+                    expect(m.reasoning).toContain("cannot appear elsewhere in those rows");
+                    saw = true;
+                    break;
+                }
+                if (m.type === "placement") {
+                    s.setSquareValue(m.row, m.col, m.value);
+                } else {
+                    s.applyElimination(m);
+                }
+            }
+            expect(saw).toBe(true);
+        });
+    });
+
     describe("Naked subset (Pair / Triple)", () => {
         const NAKED_TRIPLES_FIXTURE =
             "000000000001900500560310090100600028004000700270004003040068035002005900000000000";
@@ -1383,6 +1445,10 @@ describe("SudokuSolver", () => {
             }
             move = s.getNextMove();
             expect(move?.type).toBe("elimination");
+            while (move !== null && move.type === "elimination" && move.algorithm === "X-Wing") {
+                s.applyElimination(move);
+                move = s.getNextMove();
+            }
             expect(move?.algorithm).toBe("Naked Pair");
         });
 

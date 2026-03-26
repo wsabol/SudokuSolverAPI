@@ -10,6 +10,7 @@ export type Algorithm =
     | "Hidden Single"
     | "Pointing Pair"
     | "Pointing Triple"
+    | "X-Wing"
     | "Naked Pair"
     | "Naked Triple"
     | "Naked Quad"
@@ -30,7 +31,14 @@ export type ValidationReasonType =
     | "too_many_empty_cells";
 
 /** Drives `findBestMove` order; not the same as `Move.algorithm` (specific technique on the move). */
-type SearchPhase = "NakedSingle" | "HiddenSingle" | "Pointing" | "NakedSubset" | "HiddenSubset" | "NakedHiddenQuads";
+type SearchPhase =
+    | "NakedSingle"
+    | "HiddenSingle"
+    | "Pointing"
+    | "Fish"
+    | "NakedSubset"
+    | "HiddenSubset"
+    | "NakedHiddenQuads";
 
 const COMPLETE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -81,6 +89,7 @@ export default class SudokuSolver {
         "Pointing",
         "NakedSubset",
         "HiddenSubset",
+        "Fish",
         "NakedHiddenQuads",
     ];
 
@@ -411,6 +420,8 @@ export default class SudokuSolver {
                 return this.findHiddenSingle();
             case "Pointing":
                 return this.findPointingPairTriple();
+            case "Fish":
+                return this.findXWing();
             case "NakedSubset":
                 return this.findNakedSubsetElimination();
             case "HiddenSubset":
@@ -594,6 +605,91 @@ export default class SudokuSolver {
                 }
             }
         }
+        return null;
+    }
+
+    /** Empty cells in `row` where `digit` is still a candidate (column indices). */
+    private colsWithDigitCandidates(row: number, digit: number): number[] {
+        const cols: number[] = [];
+        for (let col = 0; col < 9; col++) {
+            if (this.board[row][col] === 0 && this.possiblesGrid[row][col].includes(digit)) {
+                cols.push(col);
+            }
+        }
+        return cols;
+    }
+
+    /** Empty cells in `col` where `digit` is still a candidate (row indices). */
+    private rowsWithDigitCandidates(col: number, digit: number): number[] {
+        const rows: number[] = [];
+        for (let row = 0; row < 9; row++) {
+            if (this.board[row][col] === 0 && this.possiblesGrid[row][col].includes(digit)) {
+                rows.push(row);
+            }
+        }
+        return rows;
+    }
+
+    /** Classic row/column X-Wing only (box forms duplicate pointing / line–box). */
+    private findXWing(): EliminationMove | null {
+        for (let digit = 1; digit <= 9; digit++) {
+            for (let r1 = 0; r1 < 9; r1++) {
+                const cols1 = this.colsWithDigitCandidates(r1, digit);
+                if (cols1.length !== 2) continue;
+                const baseCols = [...cols1].sort((a, b) => a - b);
+                for (let r2 = r1 + 1; r2 < 9; r2++) {
+                    const cols2 = this.colsWithDigitCandidates(r2, digit);
+                    if (cols2.length !== 2) continue;
+                    const pair = [...cols2].sort((a, b) => a - b);
+                    if (pair[0] !== baseCols[0] || pair[1] !== baseCols[1]) continue;
+                    const eliminations: Array<{ row: number; col: number; value: number }> = [];
+                    for (const col of baseCols) {
+                        for (let row = 0; row < 9; row++) {
+                            if (row === r1 || row === r2) continue;
+                            if (this.board[row][col] === 0 && this.possiblesGrid[row][col].includes(digit)) {
+                                eliminations.push({ row, col, value: digit });
+                            }
+                        }
+                    }
+                    if (eliminations.length > 0) {
+                        const reasoning = `X-Wing on ${digit}: rows ${r1 + 1} and ${r2 + 1
+                            } each have ${digit} only in columns ${baseCols[0] + 1} and ${baseCols[1] + 1
+                            }, so ${digit} cannot appear elsewhere in those columns.`;
+                        return this.finalizeElimination(eliminations, "X-Wing", reasoning);
+                    }
+                }
+            }
+        }
+
+        for (let digit = 1; digit <= 9; digit++) {
+            for (let c1 = 0; c1 < 9; c1++) {
+                const rows1 = this.rowsWithDigitCandidates(c1, digit);
+                if (rows1.length !== 2) continue;
+                const baseRows = [...rows1].sort((a, b) => a - b);
+                for (let c2 = c1 + 1; c2 < 9; c2++) {
+                    const rows2 = this.rowsWithDigitCandidates(c2, digit);
+                    if (rows2.length !== 2) continue;
+                    const pair = [...rows2].sort((a, b) => a - b);
+                    if (pair[0] !== baseRows[0] || pair[1] !== baseRows[1]) continue;
+                    const eliminations: Array<{ row: number; col: number; value: number }> = [];
+                    for (const row of baseRows) {
+                        for (let col = 0; col < 9; col++) {
+                            if (col === c1 || col === c2) continue;
+                            if (this.board[row][col] === 0 && this.possiblesGrid[row][col].includes(digit)) {
+                                eliminations.push({ row, col, value: digit });
+                            }
+                        }
+                    }
+                    if (eliminations.length > 0) {
+                        const reasoning = `X-Wing on ${digit}: columns ${c1 + 1} and ${c2 + 1
+                            } each have ${digit} only in rows ${baseRows[0] + 1} and ${baseRows[1] + 1
+                            }, so ${digit} cannot appear elsewhere in those rows.`;
+                        return this.finalizeElimination(eliminations, "X-Wing", reasoning);
+                    }
+                }
+            }
+        }
+
         return null;
     }
 
