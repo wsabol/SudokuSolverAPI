@@ -30,7 +30,7 @@ export type ValidationReasonType =
     | "too_many_empty_cells";
 
 /** Drives `findBestMove` order; not the same as `Move.algorithm` (specific technique on the move). */
-type SearchPhase = "NakedSingle" | "HiddenSingle" | "Pointing" | "NakedSubset" | "HiddenSubset";
+type SearchPhase = "NakedSingle" | "HiddenSingle" | "Pointing" | "NakedSubset" | "HiddenSubset" | "NakedHiddenQuads";
 
 const COMPLETE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -81,6 +81,7 @@ export default class SudokuSolver {
         "Pointing",
         "NakedSubset",
         "HiddenSubset",
+        "NakedHiddenQuads",
     ];
 
     private board: Board;
@@ -414,6 +415,10 @@ export default class SudokuSolver {
                 return this.findNakedSubsetElimination();
             case "HiddenSubset":
                 return this.findHiddenSubsetElimination();
+            case "NakedHiddenQuads":
+                return this.findNakedHiddenQuadsElimination();
+            default:
+                return null;
         }
     }
 
@@ -612,7 +617,7 @@ export default class SudokuSolver {
 
     private findNakedSubsetElimination(): EliminationMove | null {
         for (const houseCells of this.eachHouseInOrder()) {
-            for (let k = 2; k <= 4; k++) {
+            for (let k = 2; k <= 3; k++) {
                 const move = this.tryNakedSubsetInHouse(houseCells, k);
                 if (move) return move;
             }
@@ -691,10 +696,21 @@ export default class SudokuSolver {
 
     private findHiddenSubsetElimination(): EliminationMove | null {
         for (const houseCells of this.eachHouseInOrder()) {
-            for (let k = 2; k <= 4; k++) {
+            for (let k = 2; k <= 3; k++) {
                 const move = this.tryHiddenSubsetInHouse(houseCells, k);
                 if (move) return move;
             }
+        }
+        return null;
+    }
+
+    private findNakedHiddenQuadsElimination(): EliminationMove | null {
+        for (const houseCells of this.eachHouseInOrder()) {
+            const moveNaked = this.tryNakedSubsetInHouse(houseCells, 4);
+            if (moveNaked) return moveNaked;
+
+            const moveHidden = this.tryHiddenSubsetInHouse(houseCells, 4);
+            if (moveHidden) return moveHidden;
         }
         return null;
     }
