@@ -1392,7 +1392,7 @@ describe("SudokuSolver", () => {
                     m.reasoning.includes(" only in columns ")
                 ) {
                     expect(m.eliminations.length).toBeGreaterThan(0);
-                    expect(m.reasoning).toMatch(/X-Wing on \d+: rows \d+ and \d+ each have/);
+                    expect(m.reasoning).toMatch(/X-Wing on \d+: rows \d+ and \d+ have \d+ only in columns/);
                     expect(m.reasoning).toContain("cannot appear elsewhere in those columns");
                     saw = true;
                     break;
