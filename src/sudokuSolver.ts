@@ -11,6 +11,7 @@ export type Algorithm =
     | "Pointing Pair"
     | "Pointing Triple"
     | "X-Wing"
+    | "Swordfish"
     | "Naked Pair"
     | "Naked Triple"
     | "Naked Quad"
@@ -35,9 +36,10 @@ type SearchPhase =
     | "NakedSingle"
     | "HiddenSingle"
     | "Pointing"
-    | "Fish"
     | "NakedSubset"
     | "HiddenSubset"
+    | "Fish"
+    | "Swordfish"
     | "NakedHiddenQuads";
 
 const COMPLETE = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -90,6 +92,7 @@ export default class SudokuSolver {
         "NakedSubset",
         "HiddenSubset",
         "Fish",
+        "Swordfish",
         "NakedHiddenQuads",
     ];
 
@@ -422,6 +425,8 @@ export default class SudokuSolver {
                 return this.findPointingPairTriple();
             case "Fish":
                 return this.findXWing();
+            case "Swordfish":
+                return this.findSwordfish();
             case "NakedSubset":
                 return this.findNakedSubsetElimination();
             case "HiddenSubset":
@@ -685,6 +690,89 @@ export default class SudokuSolver {
                             } each have ${digit} only in rows ${baseRows[0] + 1} and ${baseRows[1] + 1
                             }, so ${digit} cannot appear elsewhere in those rows.`;
                         return this.finalizeElimination(eliminations, "X-Wing", reasoning);
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** Swordfish: 3 base rows whose candidates for a digit span exactly 3 cover columns (or vice versa). */
+    private findSwordfish(): EliminationMove | null {
+        // Row-based: find 3 rows where the union of candidate columns for digit = exactly 3 columns.
+        for (let digit = 1; digit <= 9; digit++) {
+            const eligibleRows: { row: number; cols: number[] }[] = [];
+            for (let row = 0; row < 9; row++) {
+                const cols = this.colsWithDigitCandidates(row, digit);
+                if (cols.length >= 2 && cols.length <= 3) {
+                    eligibleRows.push({ row, cols });
+                }
+            }
+            for (let i = 0; i < eligibleRows.length - 2; i++) {
+                for (let j = i + 1; j < eligibleRows.length - 1; j++) {
+                    for (let k = j + 1; k < eligibleRows.length; k++) {
+                        const r1 = eligibleRows[i]!;
+                        const r2 = eligibleRows[j]!;
+                        const r3 = eligibleRows[k]!;
+                        const unionCols = [...new Set([...r1.cols, ...r2.cols, ...r3.cols])].sort((a, b) => a - b);
+                        if (unionCols.length !== 3) continue;
+                        const baseRows = [r1.row, r2.row, r3.row];
+                        const eliminations: Array<{ row: number; col: number; value: number }> = [];
+                        for (const col of unionCols) {
+                            for (let row = 0; row < 9; row++) {
+                                if (baseRows.includes(row)) continue;
+                                if (this.board[row][col] === 0 && this.possiblesGrid[row][col].includes(digit)) {
+                                    eliminations.push({ row, col, value: digit });
+                                }
+                            }
+                        }
+                        if (eliminations.length > 0) {
+                            const reasoning =
+                                `Swordfish on ${digit}: rows ${baseRows[0]! + 1}, ${baseRows[1]! + 1} and ${baseRows[2]! + 1
+                                } have ${digit} only in columns ${unionCols[0]! + 1}, ${unionCols[1]! + 1} and ${unionCols[2]! + 1
+                                }, so ${digit} cannot appear elsewhere in those columns.`;
+                            return this.finalizeElimination(eliminations, "Swordfish", reasoning);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Column-based: find 3 columns where the union of candidate rows for digit = exactly 3 rows.
+        for (let digit = 1; digit <= 9; digit++) {
+            const eligibleCols: { col: number; rows: number[] }[] = [];
+            for (let col = 0; col < 9; col++) {
+                const rows = this.rowsWithDigitCandidates(col, digit);
+                if (rows.length >= 2 && rows.length <= 3) {
+                    eligibleCols.push({ col, rows });
+                }
+            }
+            for (let i = 0; i < eligibleCols.length - 2; i++) {
+                for (let j = i + 1; j < eligibleCols.length - 1; j++) {
+                    for (let k = j + 1; k < eligibleCols.length; k++) {
+                        const c1 = eligibleCols[i]!;
+                        const c2 = eligibleCols[j]!;
+                        const c3 = eligibleCols[k]!;
+                        const unionRows = [...new Set([...c1.rows, ...c2.rows, ...c3.rows])].sort((a, b) => a - b);
+                        if (unionRows.length !== 3) continue;
+                        const baseCols = [c1.col, c2.col, c3.col];
+                        const eliminations: Array<{ row: number; col: number; value: number }> = [];
+                        for (const row of unionRows) {
+                            for (let col = 0; col < 9; col++) {
+                                if (baseCols.includes(col)) continue;
+                                if (this.board[row][col] === 0 && this.possiblesGrid[row][col].includes(digit)) {
+                                    eliminations.push({ row, col, value: digit });
+                                }
+                            }
+                        }
+                        if (eliminations.length > 0) {
+                            const reasoning =
+                                `Swordfish on ${digit}: columns ${baseCols[0]! + 1}, ${baseCols[1]! + 1} and ${baseCols[2]! + 1
+                                } have ${digit} only in rows ${unionRows[0]! + 1}, ${unionRows[1]! + 1} and ${unionRows[2]! + 1
+                                }, so ${digit} cannot appear elsewhere in those rows.`;
+                            return this.finalizeElimination(eliminations, "Swordfish", reasoning);
+                        }
                     }
                 }
             }

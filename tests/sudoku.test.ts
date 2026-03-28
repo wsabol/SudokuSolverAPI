@@ -1371,8 +1371,9 @@ describe("SudokuSolver", () => {
         const DIABOLICAL_INPUT =
             "700409000000075300050100070640000010100080004090000036020004060007950000000708005";
 
-        it("finds a row-based X-Wing elimination after placements and Pointing (transposed Naked Triples path)", () => {
-            const rows = NAKED_TRIPLES_FIXTURE.match(/.{9}/g)!.map((line) => line.split("").map(Number));
+        it("finds a row-based X-Wing elimination on the transposed Diabolical fixture", () => {
+            // Transposing the Diabolical puzzle converts its column-based X-Wing into a row-based one.
+            const rows = DIABOLICAL_INPUT.match(/.{9}/g)!.map((line) => line.split("").map(Number));
             let transposed = "";
             for (let c = 0; c < 9; c++) {
                 for (let r = 0; r < 9; r++) {
@@ -1380,24 +1381,29 @@ describe("SudokuSolver", () => {
                 }
             }
             const s = new SudokuSolver(transposed);
-            let move = s.getNextMove();
-            while (move && move.type === "placement") {
-                s.setSquareValue(move.row, move.col, move.value);
-                move = s.getNextMove();
+            let saw = false;
+            for (let i = 0; i < 50; i++) {
+                const m = s.getNextMove();
+                if (!m) break;
+                if (
+                    m.type === "elimination" &&
+                    m.algorithm === "X-Wing" &&
+                    m.reasoning.includes("rows ") &&
+                    m.reasoning.includes(" only in columns ")
+                ) {
+                    expect(m.eliminations.length).toBeGreaterThan(0);
+                    expect(m.reasoning).toMatch(/X-Wing on \d+: rows \d+ and \d+ each have/);
+                    expect(m.reasoning).toContain("cannot appear elsewhere in those columns");
+                    saw = true;
+                    break;
+                }
+                if (m.type === "placement") {
+                    s.setSquareValue(m.row, m.col, m.value);
+                } else {
+                    s.applyElimination(m);
+                }
             }
-            expect(move?.algorithm).toBe("Pointing Pair");
-            if (move !== null && move.type === "elimination") {
-                s.applyElimination(move);
-            }
-            move = s.getNextMove();
-            expect(move).not.toBeNull();
-            expect(move!.type).toBe("elimination");
-            expect(move!.algorithm).toBe("X-Wing");
-            if (move !== null && move.type === "elimination") {
-                expect(move.eliminations.length).toBeGreaterThan(0);
-                expect(move.reasoning).toMatch(/X-Wing on \d+: rows \d+ and \d+ each have/);
-                expect(move.reasoning).toContain("cannot appear elsewhere in those columns");
-            }
+            expect(saw).toBe(true);
         });
 
         it("finds a column-based X-Wing on the Diabolical fixture solve path", () => {
@@ -1421,6 +1427,75 @@ describe("SudokuSolver", () => {
                     s.setSquareValue(m.row, m.col, m.value);
                 } else {
                     s.applyElimination(m);
+                }
+            }
+            expect(saw).toBe(true);
+        });
+    });
+
+    describe("findSwordfish()", () => {
+        // Sudopedia Swordfish practice puzzle — requires a row-based Swordfish.
+        const SWORDFISH_ROW_INPUT =
+            "000308002000040700001970080905003006037000520800500903070096100006030000400807000";
+
+        it("finds a row-based Swordfish elimination on the Sudopedia practice puzzle", () => {
+            const s = new SudokuSolver(SWORDFISH_ROW_INPUT);
+            let saw = false;
+            for (let i = 0; i < 100; i++) {
+                const m = s.getNextMove();
+                if (!m) break;
+                if (m.type === "elimination" && m.algorithm === "Swordfish") {
+                    expect(m.eliminations.length).toBeGreaterThan(0);
+                    expect(m.reasoning).toMatch(
+                        /Swordfish on \d+: rows \d+, \d+ and \d+ have \d+ only in columns \d+, \d+ and \d+/,
+                    );
+                    expect(m.reasoning).toContain("cannot appear elsewhere in those columns");
+                    saw = true;
+                    break;
+                }
+                if (m.type === "placement") {
+                    s.setSquareValue(m.row, m.col, m.value);
+                } else {
+                    s.applyElimination(m);
+                }
+            }
+            expect(saw).toBe(true);
+        });
+
+        it("finds a column-based Swordfish elimination on one of the Sudopedia practice puzzles", () => {
+            // Try all Sudopedia Swordfish practice puzzles; at least one must produce a column-based Swordfish.
+            const puzzles = [
+                SWORDFISH_ROW_INPUT,
+                "000000000008206900109804206004602500700000008001307400603405709005903800000000000",
+                "800060000000007600025900010008604000400000006000108300010006790002400000000090004",
+                "003105400000070000604903705501000302070030050802000907107306204000010000006207500",
+                "260907043730000089000000000100306005000070000400502001000000000340000097920403016",
+            ];
+            let saw = false;
+            outer: for (const puzzle of puzzles) {
+                const s = new SudokuSolver(puzzle);
+                for (let i = 0; i < 100; i++) {
+                    const m = s.getNextMove();
+                    if (!m) break;
+                    if (
+                        m.type === "elimination" &&
+                        m.algorithm === "Swordfish" &&
+                        m.reasoning.includes("columns ") &&
+                        m.reasoning.includes(" only in rows ")
+                    ) {
+                        expect(m.eliminations.length).toBeGreaterThan(0);
+                        expect(m.reasoning).toMatch(
+                            /Swordfish on \d+: columns \d+, \d+ and \d+ have \d+ only in rows \d+, \d+ and \d+/,
+                        );
+                        expect(m.reasoning).toContain("cannot appear elsewhere in those rows");
+                        saw = true;
+                        break outer;
+                    }
+                    if (m.type === "placement") {
+                        s.setSquareValue(m.row, m.col, m.value);
+                    } else {
+                        s.applyElimination(m);
+                    }
                 }
             }
             expect(saw).toBe(true);
